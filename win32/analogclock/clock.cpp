@@ -9,7 +9,8 @@ CClock::CClock()
 	stopevent = NULL;
 	id = 0;
 
-	stopevent = CreateEvent(NULL, TRUE, FALSE, L"ClockStopEvent"); //<-- gawing unique ang pangalan ng event
+	 // gawing unique ang pangalan ng event
+	stopevent = CreateEvent(NULL, TRUE, FALSE, L"ClockStopEvent");
 	if (stopevent == NULL) {
 		OutputDebugString(L"Create event failed.\n");
 	}
