@@ -402,7 +402,7 @@ DWORD WINAPI CClient::Function(LPVOID lpParam)
 	llvalue[0] = llvalue[1] = 0LL;
 	idx = 0;
 
-	// iassign ang id number para sa client na 'to
+	// ang server ay nag-aasign ng id number sa bawat kumokonektang client
 	p->my_id = (long long)GetTickCount64();
 
 	// loop
