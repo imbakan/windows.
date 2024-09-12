@@ -354,10 +354,6 @@ void CClient::Send(char* value, int size)
 {
 	int count;
 
-	if (size == 0) return;
-
-	Send(size);
-
 	count = send(socket, value, size, 0);
 
 	if (count == SOCKET_ERROR)
