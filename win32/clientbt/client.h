@@ -28,7 +28,7 @@ private:
     static const int GET_STRING = 3105;
 
     static const int ATTRIBUTES = 3201;
-    static const int STRINGS = 3202;
+    //static const int STRINGS = 3202;
     static const int COLLECT_STRING = 3203;
     static const int COLLECT_ATTRIBUTE = 3204;
 
@@ -38,14 +38,15 @@ private:
     static const int CONFIRM = 3304;
     static const int ID_RECEIVED = 3305;
     static const int RUN_ONCE = 3306;
-    //    static const int FORWARD            = 3307;
+    //static const int FORWARD            = 3307;
 
     static const int REPLY_DEVICE = 3401;
     static const int REPLY_DEVICES = 3402;
     static const int REPLY_DRIVE = 3403;
+    static const int REPLY_DIRECTORY = 3404;
 
-    //    static const int REQUEST_DRIVE      = 3501;
-    static const int REQUEST_DIRECTORY = 3502;
+    //static const int REQUEST_DRIVE      = 3501;
+    //static const int REQUEST_DIRECTORY = 3502;
     static const int REQUEST_FILE = 3503;
     static const int REQUEST_CONTENT = 3504;
 
@@ -53,8 +54,10 @@ private:
     static const int POPULATE_WITH_DEVICE = 3602;
     static const int POPULATE_WITH_DEVICES = 3603;
     static const int POPULATE_WITH_DRIVES = 3604;
+    static const int POPULATE_WITH_DIRECTORIES = 3605;
 
     static const int ENUMERATE_DRIVES = 3701;
+    static const int ENUMERATE_DIRECTORIES = 3702;
 
     HANDLE thread1;
     HWND hWnd, hTree, hList, hEdit;
@@ -86,17 +89,19 @@ private:
     void OnDepopulateByDevice(CQueue_i* order, int* next, long long value);
     void OnPopulateWithDevice(CQueue_i* order, int* next, wchar_t* str, long long value);
     void OnPopulateWithDevices(CQueue_i* order, int* next, CQueue_a* que);
-    void OnPopulateWithDrives(CQueue_i* order, int* next, CQueue_s* que);
+
+    void OnPopulateNode(CQueue_i* order, int* next, CQueue_s* que, int image, int selectedimage);
 
     void OnEnumerateDrives(CQueue_i* order, int* next, long long value);
+    void OnEnumerateDirectories(CQueue_i* order, int* next, CQueue_s* que, long long value);
 
     static DWORD WINAPI Function1(LPVOID lpParam);
 
 public:
-
+    static const int STRINGS = 3202;
     static const int FORWARD = 3307;
-
     static const int REQUEST_DRIVE = 3501;
+    static const int REQUEST_DIRECTORY = 3502;
 
     CClient();
     ~CClient();
