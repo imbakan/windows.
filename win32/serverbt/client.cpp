@@ -100,7 +100,15 @@ void CClient::OutputBuffer(const char* txt, long long value)
 	OutputDebugStringA("\n");
 }
 
-//
+//   |<--------------------------------- BUFFER_SIZE ------------------------------->|
+//             |<------------ on hand ----------->|<---------- buffer size --------->|
+//   +----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+
+//   |  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
+//   +----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+
+//                ^                                  ^
+//                |                                  |
+//             index[0]                           index[1]
+
 void CClient::OnNeedData(char* buffer, int* index, int* buffer_size, bool* needdata, CQueue_i* order, int* next)
 {
 	int i, k, n;
@@ -108,15 +116,13 @@ void CClient::OnNeedData(char* buffer, int* index, int* buffer_size, bool* needd
 	n = index[1] - index[0];
 	k = index[0];
 
-	for (i = 0; i < n; i++) {
+	for (i = 0; i < n; i++)
 		buffer[i] = buffer[k++];
-	}
 
 	index[0] = 0;
 	index[1] = n;
 
 	*buffer_size = BUFFER_SIZE - index[1];
-
 	*needdata = true;
 
 	order->Remove(next);
@@ -136,8 +142,8 @@ void CClient::OnSetOrder(bool* needdata, CQueue_i* order, int* next, int msg)
 		order->Add(SET_ORDER);
 		break;
 	case FORWARD:
-		order->Add(GET_LONGLONG);
-		order->Add(GET_LONGLONG);
+		order->Add(GET_LONGLONG_1);
+		order->Add(GET_LONGLONG_2);
 		order->Add(GET_CLIENT);
 		order->Add(RESEND);
 		order->Add(GET_INTEGER);
@@ -175,7 +181,7 @@ void CClient::OnGetInteger(char* buffer, int* index, CQueue_i* order, int* next,
 }
 
 //
-void CClient::OnGetLongLong(char* buffer, int* index, CQueue_i* order, int* next, long long* value, int* idx)
+void CClient::OnGetLongLong(char* buffer, int* index, CQueue_i* order, int* next, long long* value, int datatype)
 {
 	int avail_size, req_size;
 	long long* p;
@@ -184,18 +190,15 @@ void CClient::OnGetLongLong(char* buffer, int* index, CQueue_i* order, int* next
 	req_size = sizeof(long long);
 
 	if (avail_size < req_size) {
-		order->Return(GET_LONGLONG);
+		order->Return(datatype);
 		*next = NEED_DATA;
 		return;
 	}
 
 	p = (long long*)&buffer[index[0]];
-	value[*idx] = *p;
+	*value = *p;
 
 	index[0] += req_size;
-
-	++(*idx);
-	if ((*idx) == 2) *idx = 0;
 
 	order->Remove(next);
 }
@@ -235,7 +238,7 @@ void CClient::OnGetString(char* buffer, int* index, CQueue_i* order, int* next, 
 }
 
 //
-void CClient::OnGetClient(CQueue_i* order, int* next, long long* llvalue, CClient** client)
+void CClient::OnGetClient(CQueue_i* order, int* next, long long llvalue, CClient** client)
 {
 	LV_ITEM lvi;
 	int i, n;
@@ -253,7 +256,7 @@ void CClient::OnGetClient(CQueue_i* order, int* next, long long* llvalue, CClien
 
 			*client = (CClient*)lvi.lParam;
 
-			if (llvalue[0] == (*client)->GetId()) break;
+			if (llvalue == (*client)->GetId()) break;
 		}
 	}
 
@@ -271,24 +274,20 @@ void CClient::OnClientRunning(CQueue_i* order, int* next, wchar_t* str)
 }
 
 //
-void CClient::OnResend(char* buffer, int* index, int* buffer_size, bool* needdata, CQueue_i* order, int* next, CClient* client, long long* llvalue)
+void CClient::OnResend(char* buffer, int* index, int* buffer_size, bool* needdata, CQueue_i* order, int* next, CClient* client, long long* data_size)
 {
 	long long avail_size, req_size;
 
 	avail_size = index[1] - index[0];
-	req_size = avail_size > llvalue[1] ? llvalue[1] : avail_size;
+	req_size = avail_size > *data_size ? *data_size : avail_size;
 
-	if (req_size > 0) {
-
-		OutputBuffer("Send", &buffer[index[0]], (int)req_size);
-
+	if (req_size > 0)
 		client->Send(&buffer[index[0]], (int)req_size);
-	}
 
-	llvalue[1] -= req_size;
+	*data_size -= req_size;
 	index[0] += (int)req_size;
 
-	if (llvalue[1] > 0LL) {
+	if (*data_size > 0LL) {
 
 		order->Return(RESEND);
 		*next = NEED_DATA;
@@ -382,7 +381,7 @@ DWORD WINAPI CClient::Function(LPVOID lpParam)
 	char* buffer;
 	bool need_data;
 	int ivalue, idx;
-	long long llvalue[2];
+	long long llvalue1, llvalue2;
 	wchar_t* string;
 
 	buffer_size = BUFFER_SIZE;
@@ -395,7 +394,7 @@ DWORD WINAPI CClient::Function(LPVOID lpParam)
 	order.Add(SET_ORDER);
 
 	client = NULL;
-	llvalue[0] = llvalue[1] = 0LL;
+	llvalue1 = llvalue2 = 0LL;
 	idx = 0;
 
 	// iassign ang id number para sa client na 'to
@@ -420,7 +419,7 @@ DWORD WINAPI CClient::Function(LPVOID lpParam)
 
 			if (count <= 0) break;
 
-			p->OutputBuffer("Recv", &buffer[index[1]], count);
+			//p->OutputBuffer("R:", &buffer[index[1]], count);
 
 			index[1] += count;
 			need_data = false;
@@ -429,12 +428,13 @@ DWORD WINAPI CClient::Function(LPVOID lpParam)
 		switch (next) {
 		case SET_ORDER:			p->OnSetOrder(&need_data, &order, &next, ivalue);										break;
 		case NEED_DATA:			p->OnNeedData(buffer, index, &buffer_size, &need_data, &order, &next);					break;
-		case GET_INTEGER:		p->OnGetInteger(buffer, index, &order, &next, &ivalue);											break;
-		case GET_LONGLONG:		p->OnGetLongLong(buffer, index, &order, &next, llvalue, &idx);									break;
-		case GET_STRING:		p->OnGetString(buffer, index, &order, &next, ivalue, &string);								break;
-		case GET_CLIENT:		p->OnGetClient(&order, &next, llvalue, &client);												break;
-		case CLIENT_RUNNING:	p->OnClientRunning(&order, &next, string);														break;
-		case RESEND:			p->OnResend(buffer, index, &buffer_size, &need_data, &order, &next, client, llvalue);	break;
+		case GET_INTEGER:		p->OnGetInteger(buffer, index, &order, &next, &ivalue);									break;
+		case GET_LONGLONG_1:	p->OnGetLongLong(buffer, index, &order, &next, &llvalue1, next);						break;
+		case GET_LONGLONG_2:	p->OnGetLongLong(buffer, index, &order, &next, &llvalue2, next);						break;
+		case GET_STRING:		p->OnGetString(buffer, index, &order, &next, ivalue, &string);							break;
+		case GET_CLIENT:		p->OnGetClient(&order, &next, llvalue1, &client);										break;
+		case CLIENT_RUNNING:	p->OnClientRunning(&order, &next, string);												break;
+		case RESEND:			p->OnResend(buffer, index, &buffer_size, &need_data, &order, &next, client, &llvalue2);	break;
 		}
 	}
 
