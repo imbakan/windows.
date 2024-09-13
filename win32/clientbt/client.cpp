@@ -259,9 +259,20 @@ void CClient::OnSetOrder(bool* needdata, CQueue_i* order, int* next, int cmd)
 		order->Add(GET_INTEGER);
 		order->Add(SET_ORDER);
 		break;
+	case REPLY_DIRECTORY:
+		order->Add(POPULATE_WITH_DIRECTORIES);
+		order->Add(GET_INTEGER);
+		order->Add(SET_ORDER);
+		break;
 	case REQUEST_DRIVE:
 		order->Add(GET_LONGLONG);
 		order->Add(ENUMERATE_DRIVES);
+		order->Add(GET_INTEGER);
+		order->Add(SET_ORDER);
+		break;
+	case REQUEST_DIRECTORY:
+		order->Add(GET_LONGLONG);
+		order->Add(ENUMERATE_DIRECTORIES);
 		order->Add(GET_INTEGER);
 		order->Add(SET_ORDER);
 		break;
@@ -501,16 +512,15 @@ void CClient::OnPopulateWithDevices(CQueue_i* order, int* next, CQueue_a* que)
 }
 
 //
-void CClient::OnPopulateWithDrives(CQueue_i* order, int* next, CQueue_s* que)
+void CClient::OnPopulateNode(CQueue_i* order, int* next, CQueue_s* que, int image, int selectedimage)
 {
 	TVINSERTSTRUCT tvis;
 	TV_ITEM tvi;
 	TREE_VIEW_DATA* data;
-	int iImage, iSelectedImage;
 	long long value;
 	wchar_t str[MAX_PATH];
 
-	// kunin ang param ng tree item na 'to
+	// kunin ang id number ng node na 'to
 	ZeroMemory(&tvi, sizeof(TV_ITEM));
 
 	tvi.mask = TVIF_HANDLE | TVIF_PARAM;
@@ -521,20 +531,17 @@ void CClient::OnPopulateWithDrives(CQueue_i* order, int* next, CQueue_s* que)
 	data = (TREE_VIEW_DATA*)tvi.lParam;
 	value = data->value;
 
-	// ilagay ang client id sa bawat child na idadagdag
-	// ang mga child ay nakacollapse sa umpisa
-	// kaya ang member variable is_collapse ay true
-	iImage = 2;
-	iSelectedImage = 3;
-
+	// lagyan ng mga child ang node na 'to
+	// ilagay ang id number na nakuha sa itaas sa bawat child na idadagdag
+	// ilagay din ang collapse indicator sa bawat child na idadagdag
 	tvis.hParent = hItem;
 	tvis.hInsertAfter = TVI_LAST;
 	tvis.item.mask = TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_TEXT | TVIF_PARAM | TVIF_CHILDREN;
 	tvis.item.hItem = NULL;
 	tvis.item.state = 0;
 	tvis.item.stateMask = 0;
-	tvis.item.iImage = iImage;
-	tvis.item.iSelectedImage = iSelectedImage;
+	tvis.item.iImage = image;
+	tvis.item.iSelectedImage = selectedimage;
 	tvis.item.cChildren = 1;
 
 	while (!que->IsEmpty()) {
@@ -552,7 +559,8 @@ void CClient::OnPopulateWithDrives(CQueue_i* order, int* next, CQueue_s* que)
 		TreeView_InsertItem(hTree, &tvis);
 	}
 
-	// kunin ang param ng tree item na 'to
+	// baguhin ang collapse indicator ng node na 'to sa false
+	// kasi ito ay expand na
 	ZeroMemory(&tvi, sizeof(TV_ITEM));
 
 	tvi.mask = TVIF_HANDLE | TVIF_PARAM;
@@ -565,8 +573,6 @@ void CClient::OnPopulateWithDrives(CQueue_i* order, int* next, CQueue_s* que)
 
 	delete data;
 
-	// gawing false ang member variable is_collapse
-	// dahil ito ay naka-expadnd na
 	data = new TREE_VIEW_DATA;
 	data->value = value;
 	data->is_collapse = false;
@@ -579,7 +585,7 @@ void CClient::OnPopulateWithDrives(CQueue_i* order, int* next, CQueue_s* que)
 
 	TreeView_SetItem(hTree, &tvi);
 
-	// iexpand ang tree item
+	// iexpand ang node
 	TreeView_Expand(hTree, hItem, TVE_EXPAND);
 
 	order->Remove(next);
@@ -604,12 +610,84 @@ void CClient::OnEnumerateDrives(CQueue_i* order, int* next, long long value)
 
 	for (i = 0; i < drive_count; i++) {
 
-		Send(STRINGS);                      // drive_count * sizeof(int)
-		Send(drive_name[i]);                 // drive_count * sizeof(int),      count * sizeof(wchar_t)
+		Send(STRINGS);
+		Send(drive_name[i]);
 
 	}
 
-	Send(REPLY_DRIVE);                      // sizeof(int)
+	Send(REPLY_DRIVE);
+
+	order->Remove(next);
+}
+
+//
+void CClient::OnEnumerateDirectories(CQueue_i* order, int* next, CQueue_s* que, long long value)
+{
+	HANDLE handle;
+	WIN32_FIND_DATA data;
+	CQueue_s array_s;
+	int i;
+	long long ccount, scount, size;
+	wchar_t str[MAX_PATH], path[MAX_PATH];
+
+	// kunin ang path name
+	que->Remove(str, MAX_PATH);
+
+	for (i = 0; i < drive_count; i++)
+		if (wcscmp(str, drive_name[i]) == 0)
+			break;
+
+	wcscpy_s(path, MAX_PATH, drive_letter[i]);
+
+	while (!que->IsEmpty()) {
+		que->Remove(str, MAX_PATH);
+		wcscat_s(path, MAX_PATH, L"\\");
+		wcscat_s(path, MAX_PATH, str);
+	}
+
+	wcscat_s(path, MAX_PATH, L"\\*.*");
+
+	OutputDebugString(path);
+	OutputDebugString(L"\n");
+
+	// kunin ang mga directory
+	handle = FindFirstFile(path, &data);
+	if (handle != INVALID_HANDLE_VALUE) {
+
+		ccount = 0LL;
+
+		do {
+			if (!wcscmp(data.cFileName, L"..") || !wcscmp(data.cFileName, L".")) continue;
+			if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+				ccount += wcslen(data.cFileName);
+				array_s.Add(data.cFileName);
+			}
+		} while (FindNextFile(handle, &data));
+
+		FindClose(handle);
+	}
+
+	// isend sa server
+	if (!array_s.IsEmpty()) {
+
+		scount = array_s.GetCount();
+
+		size = 2L * scount * sizeof(int) + ccount * sizeof(wchar_t) + sizeof(int);
+
+		Send(FORWARD);
+		Send(value);
+		Send(size);
+
+		while (!array_s.IsEmpty()) {
+
+			array_s.Remove(str, MAX_PATH);
+
+			Send(STRINGS);
+			Send(str);
+		}
+
+		Send(REPLY_DIRECTORY);
+	}
 
 	order->Remove(next);
 }
@@ -746,7 +824,7 @@ DWORD WINAPI CClient::Function1(LPVOID lpParam)
 
 			if (count <= 0) break;
 
-			p->OutputBuffer("Recv", &buffer[index[1]], count);
+			//p->OutputBuffer("Recv", &buffer[index[1]], count);
 
 			index[1] += count;
 			need_data = false;
@@ -765,8 +843,12 @@ DWORD WINAPI CClient::Function1(LPVOID lpParam)
 		case DEPOPULATE_BY_DEVICE:			p->OnDepopulateByDevice(&order, &next, llvalue);						break;
 		case POPULATE_WITH_DEVICE:			p->OnPopulateWithDevice(&order, &next, string, llvalue);				break;
 		case POPULATE_WITH_DEVICES:			p->OnPopulateWithDevices(&order, &next, &attribute);					break;
-		case POPULATE_WITH_DRIVES:			p->OnPopulateWithDrives(&order, &next, &que);							break;
+
+		case POPULATE_WITH_DRIVES:			p->OnPopulateNode(&order, &next, &que, 2, 3);			break;
+		case POPULATE_WITH_DIRECTORIES:		p->OnPopulateNode(&order, &next, &que, 4, 5);			break;
+
 		case ENUMERATE_DRIVES:				p->OnEnumerateDrives(&order, &next, llvalue);							break;
+		case ENUMERATE_DIRECTORIES:			p->OnEnumerateDirectories(&order, &next, &que, llvalue);				break;
 		}
 	}
 
