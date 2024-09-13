@@ -298,6 +298,9 @@ void ReleaseTreeView(HWND hTree, HTREEITEM hItem)
         // ibrowse ang mga child
         hItem2 = TreeView_GetChild(hTree, hItem1);
 
+        swprintf_s(str, MAX_PATH, L"%-30s%-10s%016llx%5lld\n", str2, hItem2 == NULL ? L"    " : L"has", tvi.lParam, value);
+        OutputDebugString(str);
+
         if (hItem2 != NULL) ReleaseTreeView(hTree, hItem2);
 
         // pagpalitin
@@ -489,9 +492,6 @@ void OnItemExpanding(HWND hWnd, LPARAM lParam)
         data = (TREE_VIEW_DATA*)tvi.lParam;
         is_collapse = data->is_collapse;
 
-        swprintf_s(str, MAX_PATH, L"OnItemExpanding TVE_EXPAND %s\n", is_collapse ? L"true" : L"false");
-        OutputDebugString(str);
-
         // kung nakacollapse iexpand
         if (is_collapse) {
 
@@ -508,17 +508,10 @@ void OnItemExpanding(HWND hWnd, LPARAM lParam)
 
                 size = sizeof(int) + sizeof(long long);
 
-                OutputBuffer("Send", CClient::FORWARD);
-                OutputBuffer("Send", data->value);
-                OutputBuffer("Send", size);
-
-                OutputBuffer("Send", CClient::REQUEST_DRIVE);
-                OutputBuffer("Send", client.GetId());
-
                 // para sa server
                 client.Send(CClient::FORWARD);
-                client.Send(data->value);             // ito ang destination client para sa request
-                client.Send(size);                    // size ng data na isesend, ito yung nasa baba
+                client.Send(data->value);                   // ito ang destination client para sa request
+                client.Send(size);                      // size ng data na isesend, ito yung nasa baba
 
                 // para sa client
                 client.Send(CClient::REQUEST_DRIVE);
@@ -527,22 +520,33 @@ void OnItemExpanding(HWND hWnd, LPARAM lParam)
             }
             else {
 
-                while (!stack.IsEmpty()) {
+                size = 2LL * n * sizeof(int) + count * sizeof(wchar_t) + sizeof(int) + sizeof(long long);
 
-                    stack.Pop(str, MAX_PATH);
+                // para sa server
+                client.Send(CClient::FORWARD);
+                client.Send(data->value);             // ito ang destination client para sa request
+                client.Send(size);               // size ng data na isesend, ito yung nasa baba
 
-                    OutputDebugString(str);
-                    OutputDebugString(L"\n");
-                }
+                 while (!stack.IsEmpty()) {
 
+                     stack.Pop(str, MAX_PATH);
+
+                     OutputDebugString(str);
+                     OutputDebugString(L"\n");
+
+                     client.Send(CClient::STRINGS);
+                     client.Send(str);
+                 }
+
+                 // para sa client
+                 client.Send(CClient::REQUEST_DIRECTORY);
+                 client.Send(client.GetId());           // ito ang destination client para sa reply
             }
         }
     }
 
     // dito ang tree item ay collapse
     if (lpnmtv->action == TVE_COLLAPSE) {
-
-        OutputDebugString(L"OnItemExpanding TVE_COLLAPSE\n");
 
         // kunin ang param ng tree item na 'to
         ZeroMemory(&tvi, sizeof(TV_ITEM));
