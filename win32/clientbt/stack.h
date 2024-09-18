@@ -24,5 +24,8 @@ public:
 	void Push(wchar_t* str);
 	void Pop(wchar_t* str, size_t n);
 
+	void Reset();
+	void Read(wchar_t** str);
+	bool IsEnd();
 };
 
