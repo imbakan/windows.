@@ -120,3 +120,22 @@ void CStack::Pop(wchar_t* str, size_t n)
 	delete[] Node->str;
 	delete Node;
 }
+
+//
+void CStack::Reset()
+{
+	Cursor = First;
+}
+
+//
+void CStack::Read(wchar_t** str)
+{
+	*str = Cursor->str;
+	Cursor = Cursor->Next;
+}
+
+//
+bool CStack::IsEnd()
+{
+	return (Cursor == NULL);
+}
