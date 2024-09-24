@@ -5,7 +5,7 @@
 #define IDS_APP_TITLE			103
 
 #define IDR_MAINFRAME			128
-#define IDD_CLIENTBT_DIALOG	102
+#define IDD_CLIENTBT_DIALOG		102
 #define IDD_ABOUTBOX			103
 #define IDM_ABOUT				104
 #define IDM_EXIT				105
@@ -20,7 +20,7 @@
 #define IDM_DISCONNECT			112
 #define IDM_CLOSE				121
 
-#define IDM_OUTPUT_1			131
+#define IDM_DOWNLOAD			131
 
 #define IDI_ICON_1				151
 #define IDI_ICON_2				152
