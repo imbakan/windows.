@@ -44,20 +44,24 @@ private:
     static const int REPLY_DEVICES = 3402;
     static const int REPLY_DRIVE = 3403;
     static const int REPLY_DIRECTORY = 3404;
+    static const int REPLY_FILE = 3405;
 
     //static const int REQUEST_DRIVE      = 3501;
     //static const int REQUEST_DIRECTORY = 3502;
-    static const int REQUEST_FILE = 3503;
-    static const int REQUEST_CONTENT = 3504;
+    //static const int REQUEST_FILE = 3503;
+    //static const int REQUEST_CONTENT = 3504;
 
     static const int DEPOPULATE_BY_DEVICE = 3601;
     static const int POPULATE_WITH_DEVICE = 3602;
     static const int POPULATE_WITH_DEVICES = 3603;
     static const int POPULATE_WITH_DRIVES = 3604;
     static const int POPULATE_WITH_DIRECTORIES = 3605;
+    static const int POPULATE_WITH_FILES = 3606;
 
     static const int ENUMERATE_DRIVES = 3701;
     static const int ENUMERATE_DIRECTORIES = 3702;
+    static const int ENUMERATE_FILES = 3703;
+    static const int ENUMERATE_CONTENTS = 3704;
 
     HANDLE thread1;
     HWND hWnd, hTree, hList, hEdit;
@@ -69,9 +73,8 @@ private:
     SOCKET socket;
 
     void OutputBuffer(const char* txt, char* buffer, int count);
-    void OutputBuffer(const char* txt, int value);
-    void OutputBuffer(const char* txt, long long value);
 
+    void FormatWithCommas(wchar_t* str, int size, unsigned __int64 num);
     void GetDrives(wchar_t*** letter, wchar_t*** name, int* count);
 
     void OnNeedData(char* buffer, int* index, int* buffer_size, bool* needdata, CQueue_i* order, int* next);
@@ -91,9 +94,12 @@ private:
     void OnPopulateWithDevices(CQueue_i* order, int* next, CQueue_a* que);
 
     void OnPopulateNode(CQueue_i* order, int* next, CQueue_s* que, int image, int selectedimage);
+    void OnPopulateWithFiles(CQueue_i* order, int* next, CQueue_s* que);
 
     void OnEnumerateDrives(CQueue_i* order, int* next, long long value);
     void OnEnumerateDirectories(CQueue_i* order, int* next, CQueue_s* que, long long value);
+    void OnEnumerateFiles(CQueue_i* order, int* next, CQueue_s* que, long long value);
+    void OnEnumerateContents(CQueue_i* order, int* next, CQueue_s* que, long long value);
 
     static DWORD WINAPI Function1(LPVOID lpParam);
 
@@ -102,6 +108,8 @@ public:
     static const int FORWARD = 3307;
     static const int REQUEST_DRIVE = 3501;
     static const int REQUEST_DIRECTORY = 3502;
+    static const int REQUEST_FILE = 3503;
+    static const int REQUEST_CONTENT = 3504;
 
     CClient();
     ~CClient();
