@@ -53,7 +53,7 @@ BEGIN
     END
     POPUP "&Tools"
     BEGIN
-        MENUITEM "Output 1", IDM_OUTPUT_1
+        MENUITEM "Download",        IDM_DOWNLOAD
     END
 END
 
@@ -151,7 +151,7 @@ END
 STRINGTABLE
 BEGIN
    IDC_CLIENTBT   "CLIENTBT"
-   IDS_APP_TITLE       "Client LAN"
+   IDS_APP_TITLE       "Client BT"
 END
 
 #endif
