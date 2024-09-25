@@ -276,25 +276,26 @@ void CClient::OnClientRunning(CQueue_i* order, int* next, wchar_t* str)
 //
 void CClient::OnResend(char* buffer, int* index, int* buffer_size, bool* needdata, CQueue_i* order, int* next, CClient* client, long long* data_size)
 {
-	long long avail_size, req_size;
+	long long avail_size;
 
 	avail_size = index[1] - index[0];
-	req_size = avail_size > *data_size ? *data_size : avail_size;
 
-	if (req_size > 0)
-		client->Send(&buffer[index[0]], (int)req_size);
+	if (avail_size < *data_size) {
 
-	*data_size -= req_size;
-	index[0] += (int)req_size;
+		if (avail_size > 0)
+			client->Send(&buffer[index[0]], (int)avail_size);
 
-	if (*data_size > 0LL) {
-
-		order->Return(RESEND);
-		*next = NEED_DATA;
-		return;
+		index[0] = index[1] = 0;
+		*buffer_size = BUFFER_SIZE;
+		*data_size -= avail_size;
+		*needdata = true;
 	}
+	else {
 
-	order->Remove(next);
+		client->Send(&buffer[index[0]], (int)*data_size);
+		index[0] += (int)*data_size;
+		order->Remove(next);
+	}
 }
 
 //
