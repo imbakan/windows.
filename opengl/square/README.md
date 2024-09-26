@@ -1,0 +1,1 @@
+<img src="square.png">
