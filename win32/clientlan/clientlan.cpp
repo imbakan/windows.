@@ -1,7 +1,7 @@
 
 // client-server model
 // client side
-// LAN
+// LAN, WiFi
 
 #include "framework.h"
 #include "clientlan.h"
@@ -9,8 +9,8 @@
 #include "client.h"
 #include "stack.h"
 
-#define DEFAULT_IP     "192.168.1.1"
-#define DEFAULT_PORT         "27015"
+#define DEFAULT_IP     "192.168.0.0"
+#define DEFAULT_PORT    "27015"
 
 const int MAX_LOADSTRING = 100;
 const int PADDING = 2;
@@ -44,12 +44,16 @@ void OutputBuffer(const char* txt, long long value);
 void ReleaseTreeView(HWND hTree, HTREEITEM hItem);
 void ReleaseTreeViewChildren(HWND hTree, HTREEITEM hItem);
 
-HTREEITEM TreeView_GetHierarchicalItem(CStack* stack, long long* count, HWND hTree, HTREEITEM hItem);
+HTREEITEM TreeView_GetHierarchicalItem(CStack* stack, HWND hTree, HTREEITEM hItem);
 
 void OnLogMessage(HWND hWnd, WPARAM wParam, LPARAM lParam);
 void OnConnecting(HWND hWnd, WPARAM wParam, LPARAM lParam);
 void OnRunning(HWND hWnd, WPARAM wParam, LPARAM lParam);
 void OnShuttingDown(HWND hWnd, WPARAM wParam, LPARAM lParam);
+
+void OnListViewSetFocus(HWND hWnd, LPARAM lParam);
+void OnListViewKillFocus(HWND hWnd, LPARAM lParam);
+void OnListViewItemChanged(HWND hWnd, LPARAM lParam);
 
 void OnItemExpanding(HWND hWnd, LPARAM lParam);
 void OnItemExpanded(LPARAM lParam);
@@ -69,7 +73,7 @@ void OnClientConnect(HWND hWnd);
 void OnClientDisonnect(HWND hWnd);
 void OnClientExit(HWND hWnd);
 
-void OnToolsOutput1(HWND hWnd);
+void OnToolsDownload(HWND hWnd);
 
 // main program
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
@@ -104,7 +108,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
     // gumawa ng window
     int X, Y, nWidth, nHeight, Cx, Cy;
 
-    // 1080p: 1920 x 1080
     //  480p:  854 x  480
 
     Cx = 854;
@@ -151,8 +154,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
-    case WM_LOG_MESSAGE:  OnLogMessage(hWnd, wParam, lParam);     break;
-
+    case WM_LOG_MESSAGE:    OnLogMessage(hWnd, wParam, lParam);     break;
     case WM_CONNECTING:     OnConnecting(hWnd, wParam, lParam);     break;
     case WM_RUNNING:        OnRunning(hWnd, wParam, lParam);        break;
     case WM_SHUTTING_DOWN:  OnShuttingDown(hWnd, wParam, lParam);   break;
@@ -160,6 +162,30 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_NOTIFY:
         switch (((LPNMHDR)lParam)->code)
         {
+        case LVN_ITEMCHANGED:
+            switch (((LPNMHDR)lParam)->idFrom)
+            {
+            case IDC_LIST1: OnListViewItemChanged(hWnd, lParam); break;
+            default:
+                return DefWindowProc(hWnd, message, wParam, lParam);
+            }
+            break;
+        case NM_SETFOCUS:
+            switch (((LPNMHDR)lParam)->idFrom)
+            {
+            case IDC_LIST1: OnListViewSetFocus(hWnd, lParam); break;
+            default:
+                return DefWindowProc(hWnd, message, wParam, lParam);
+            }
+            break;
+        case NM_KILLFOCUS:
+            switch (((LPNMHDR)lParam)->idFrom)
+            {
+            case IDC_LIST1: OnListViewKillFocus(hWnd, lParam); break;
+            default:
+                return DefWindowProc(hWnd, message, wParam, lParam);
+            }
+            break;
         case TVN_ITEMEXPANDING: OnItemExpanding(hWnd, lParam);  break;
         case TVN_ITEMEXPANDED:  OnItemExpanded(lParam);         break;
         case TVN_SELCHANGED:    OnSelChanged(hWnd, lParam);	    break;
@@ -171,7 +197,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_LBUTTONDOWN:OnLButtonDown(hWnd, LOWORD(lParam), HIWORD(lParam));	break;
     case WM_LBUTTONUP:	OnLButtonUp(hWnd, LOWORD(lParam), HIWORD(lParam));      break;
     case WM_MOUSEMOVE:	OnMouseMove(hWnd, LOWORD(lParam), HIWORD(lParam));      break;
-    case WM_SIZE:       OnSize(hWnd, LOWORD(lParam), HIWORD(lParam));   break;
+    case WM_SIZE:       OnSize(hWnd, LOWORD(lParam), HIWORD(lParam));           break;
 
     case WM_COMMAND:
 
@@ -180,7 +206,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case IDM_CONNECT:           OnClientConnect(hWnd);	        break;
         case IDM_DISCONNECT:        OnClientDisonnect(hWnd);        break;
         case IDM_EXIT:		        OnClientExit(hWnd);             break;
-        case IDM_OUTPUT_1:          OnToolsOutput1(hWnd);           break;
+        case IDM_DOWNLOAD:          OnToolsDownload(hWnd);          break;
         default:
             return DefWindowProc(hWnd, message, wParam, lParam);
         }
@@ -266,12 +292,12 @@ void OutputBuffer(const char* txt, long long value)
     OutputDebugStringA("\n");
 }
 
-// irelease ang memory naka-associate sa item pagdinestroy
+// irelease ang mga allocated memory na nasa bawat node ng tree view control
 void ReleaseTreeView(HWND hTree, HTREEITEM hItem)
 {
     HTREEITEM hItem1, hItem2;
     TV_ITEM tvi;
-    wchar_t str[MAX_PATH], str1[MAX_PATH], str2[MAX_PATH];
+    wchar_t str1[MAX_PATH], str2[MAX_PATH];
     TREE_VIEW_DATA* data;
     long long value;
 
@@ -281,6 +307,7 @@ void ReleaseTreeView(HWND hTree, HTREEITEM hItem)
 
     while (hItem1 != NULL) {
 
+        // release memory
         ZeroMemory(&tvi, sizeof(TV_ITEM));
 
         tvi.mask = TVIF_HANDLE | TVIF_TEXT | TVIF_PARAM;
@@ -300,27 +327,31 @@ void ReleaseTreeView(HWND hTree, HTREEITEM hItem)
 
         // ibrowse ang mga child
         hItem2 = TreeView_GetChild(hTree, hItem1);
+
+        // iterate
         if (hItem2 != NULL) ReleaseTreeView(hTree, hItem2);
 
         // pagpalitin
         wcscpy_s(str1, MAX_PATH, str2);
 
+        // kunin ang susunod na child
         hItem1 = TreeView_GetNextSibling(hTree, hItem1);
     }
 }
 
-// irelease ang memory naka-associate sa item pagkinolapse
+// irelease ang mga allocated memory na nasa bawat node ng tree view control
 void ReleaseTreeViewChildren(HWND hTree, HTREEITEM hItem)
 {
     HTREEITEM hNext, hChild;
     TREE_VIEW_DATA* data;
     TV_ITEM tvi;
 
-    // ang hNext ay ang unang child ng parent hItem
+    // kunin ang unang child ng parent hItem
     hNext = TreeView_GetChild(hTree, hItem);
 
     while (hNext != NULL) {
 
+        // irelease ang memory na nasa node na 'to
         tvi.mask = TVIF_HANDLE | TVIF_PARAM;
         tvi.hItem = hNext;
 
@@ -330,31 +361,29 @@ void ReleaseTreeViewChildren(HWND hTree, HTREEITEM hItem)
 
         delete data;
 
-        // alamin kung may child ang parent hNext
+        // alamin kung may child ang parent na 'to
+        // kung meron ireleale ang mag ito
         hChild = TreeView_GetChild(hTree, hNext);
 
-        // kung meron ireleale ang mag ito
         if (hChild != NULL)
             ReleaseTreeViewChildren(hTree, hNext);
 
-        // ang hNext ay ang susunod na child ng parent hItem
+        // kunin ang susunod na child
         hNext = TreeView_GetNextSibling(hTree, hNext);
     }
 }
 
-//
-HTREEITEM TreeView_GetHierarchicalItem(CStack* stack, long long* count, HWND hTree, HTREEITEM hItem)
+// kunin ang pathname stack ng node hItem
+HTREEITEM TreeView_GetHierarchicalItem(CStack* stack, HWND hTree, HTREEITEM hItem)
 {
     HTREEITEM hPrevItem;
     TV_ITEM tvi;
     wchar_t str[MAX_PATH];
 
-    *count = 0LL;
-
     hPrevItem = hItem;
 
     // ang order ng pagkuha ng mga item ay mula sa child papuntang parent
-    while (TreeView_GetParent(hTree, hPrevItem) != NULL)
+    while (hPrevItem != NULL)
     {
         // kunin ang pangalan ng item
         tvi.mask = TVIF_HANDLE | TVIF_TEXT;
@@ -363,8 +392,6 @@ HTREEITEM TreeView_GetHierarchicalItem(CStack* stack, long long* count, HWND hTr
         tvi.cchTextMax = MAX_PATH;
 
         TreeView_GetItem(hTree, &tvi);
-
-        *count += wcslen(str);
 
         stack->Push(str);
 
@@ -464,6 +491,33 @@ void OnShuttingDown(HWND hWnd, WPARAM wParam, LPARAM lParam)
 }
 
 //
+void OnListViewSetFocus(HWND hWnd, LPARAM lParam)
+{
+    HWND hList = ((LPNMHDR)lParam)->hwndFrom;
+    UINT enable = ListView_GetNextItem(hList, -1, LVNI_SELECTED) == -1 ? MF_DISABLED : MF_ENABLED;
+
+    HMENU hMenu = GetMenu(hWnd);
+    EnableMenuItem(hMenu, IDM_DOWNLOAD, MF_BYCOMMAND | enable);
+}
+
+//
+void OnListViewKillFocus(HWND hWnd, LPARAM lParam)
+{
+    HMENU hMenu = GetMenu(hWnd);
+    EnableMenuItem(hMenu, IDM_DOWNLOAD, MF_BYCOMMAND | MF_DISABLED);
+}
+
+//
+void OnListViewItemChanged(HWND hWnd, LPARAM lParam)
+{
+    HWND hList = ((LPNMHDR)lParam)->hwndFrom;
+    UINT enable = ListView_GetNextItem(hList, -1, LVNI_SELECTED) == -1 ? MF_DISABLED : MF_ENABLED;
+
+    HMENU hMenu = GetMenu(hWnd);
+    EnableMenuItem(hMenu, IDM_DOWNLOAD, MF_BYCOMMAND | enable);
+}
+
+//
 void OnItemExpanding(HWND hWnd, LPARAM lParam)
 {
     HWND hTree = ((LPNMHDR)lParam)->hwndFrom;
@@ -472,15 +526,15 @@ void OnItemExpanding(HWND hWnd, LPARAM lParam)
     TV_ITEM tvi;
     TREE_VIEW_DATA* data;
     CStack stack;
-    int n;
     long long count, size, value;
     bool is_collapse;
     wchar_t str[MAX_PATH];
+    wchar_t* s;
 
-    // dito ang tree item ay expand
+    // dito ang tree node ay inexpand
     if (lpnmtv->action == TVE_EXPAND) {
 
-        // kunin ang param ng tree item na 'to
+        // alamin kung nakacollaspse ang node
         ZeroMemory(&tvi, sizeof(TV_ITEM));
 
         tvi.mask = TVIF_HANDLE | TVIF_PARAM;
@@ -491,62 +545,73 @@ void OnItemExpanding(HWND hWnd, LPARAM lParam)
         data = (TREE_VIEW_DATA*)tvi.lParam;
         is_collapse = data->is_collapse;
 
-        swprintf_s(str, MAX_PATH, L"OnItemExpanding TVE_EXPAND %s\n", is_collapse ? L"true" : L"false");
-        OutputDebugString(str);
-
         // kung nakacollapse iexpand
         if (is_collapse) {
 
-            // iset ang tree item handle
-            // dito idadagdag ang mga makukuha drive o directory
+            // isave ang handle ng node
             client.SetHandle(hItem);
 
-            // kunin ang path
-            TreeView_GetHierarchicalItem(&stack, &count, hTree, hItem);
-            n = stack.GetCount();
+            // kunin ang path name
+            TreeView_GetHierarchicalItem(&stack, hTree, hItem);
 
-            // n equal zero, ito ay drive
-            if (n == 0) {
+            // alisin ang pangalan ng device sa path name
+            stack.Pop(str, MAX_PATH);
 
+            // equal zero, ito ay drive
+            // not equal zero, ito ay directory
+            if (stack.GetCount() == 0) {
+
+                // kompyutin ang size na isesend sa destination client
                 size = sizeof(int) + sizeof(long long);
 
-                OutputBuffer("Send", CClient::FORWARD);
-                OutputBuffer("Send", data->value);
-                OutputBuffer("Send", size);
-
-                OutputBuffer("Send", CClient::REQUEST_DRIVE);
-                OutputBuffer("Send", client.GetId());
-
-                // para sa server
+                // isend ang mga ito sa server
+                // ang data->value ay id number ng destination client
+                // ang client.GetId() ay id number ng source client
                 client.Send(CClient::FORWARD);
-                client.Send(data->value);             // ito ang destination client para sa request
-                client.Send(size);                    // size ng data na isesend, ito yung nasa baba
+                client.Send(data->value);
+                client.Send(size);
 
-                // para sa client
                 client.Send(CClient::REQUEST_DRIVE);
-                client.Send(client.GetId());          // ito ang destination client para sa reply
+                client.Send(client.GetId());
 
             }
             else {
+
+                // kompyutin ang size na isesend sa destination client
+                count = 0LL;
+                stack.Reset();
+                while (!stack.IsEnd()) {
+                    stack.Read(&s);
+                    count += wcslen(s);
+                }
+
+                size = 2LL * stack.GetCount() * sizeof(int) + count * sizeof(wchar_t) + sizeof(int) + sizeof(long long);
+
+                // isend ang mga ito sa server
+                // ang data->value ay id number ng destination client
+                // ang client.GetId() ay id number ng source client
+                client.Send(CClient::FORWARD);
+                client.Send(data->value);
+                client.Send(size);
 
                 while (!stack.IsEmpty()) {
 
                     stack.Pop(str, MAX_PATH);
 
-                    OutputDebugString(str);
-                    OutputDebugString(L"\n");
+                    client.Send(CClient::STRINGS);
+                    client.Send(str);
                 }
 
+                client.Send(CClient::REQUEST_DIRECTORY);
+                client.Send(client.GetId());
             }
         }
     }
 
-    // dito ang tree item ay collapse
+    // dito ang tree node ay cinollapse
     if (lpnmtv->action == TVE_COLLAPSE) {
 
-        OutputDebugString(L"OnItemExpanding TVE_COLLAPSE\n");
-
-        // kunin ang param ng tree item na 'to
+        // iset sa false ang collapse indicator ng node ni 'to
         ZeroMemory(&tvi, sizeof(TV_ITEM));
 
         tvi.mask = TVIF_HANDLE | TVIF_PARAM;
@@ -559,8 +624,6 @@ void OnItemExpanding(HWND hWnd, LPARAM lParam)
 
         delete data;
 
-        // gawing true ang member variable is_collapse dahil ito ay nakacollapse na
-        // ilagay ang param sa tree item na 'to
         data = new TREE_VIEW_DATA;
         data->value = value;
         data->is_collapse = true;
@@ -573,7 +636,7 @@ void OnItemExpanding(HWND hWnd, LPARAM lParam)
 
         TreeView_SetItem(hTree1, &tvi);
 
-        // irelease ang param ng bawat item
+        // irelease ang mga child node nito
         ReleaseTreeViewChildren(hTree, hItem);
     }
 }
@@ -592,7 +655,79 @@ void OnItemExpanded(LPARAM lParam)
 //
 void OnSelChanged(HWND hWnd, LPARAM lParam)
 {
+    HWND hTree = ((LPNMHDR)lParam)->hwndFrom;
+    LPNM_TREEVIEW lpnmtv = (LPNM_TREEVIEW)lParam;
+    HTREEITEM hItem = lpnmtv->itemNew.hItem;
+    TV_ITEM tvi;
+    TREE_VIEW_DATA* data;
+    CStack stack;
+    long long count, size;
+    wchar_t str1[MAX_PATH];
+    wchar_t* str2;
 
+    // kunin ang path name
+    TreeView_GetHierarchicalItem(&stack, hTree, hItem);
+
+    // idisplay sa edit control
+    wcscpy_s(str1, MAX_PATH, L"");
+    stack.Reset();
+    while (!stack.IsEnd()) {
+        stack.Read(&str2);
+        wcscat_s(str1, MAX_PATH, str2);
+        wcscat_s(str1, MAX_PATH, L" \u25ba ");
+    }
+
+    count = wcslen(str1);
+    str1[count - 3] = '\0';
+    SetWindowText(hEdit1, str1);
+
+    // iclear ang mga ito
+    ListView_DeleteAllItems(hList1);
+    SetWindowText(hEdit2, L"");
+
+    // alisin ang pangalan ng device sa path name
+    stack.Pop(str1, MAX_PATH);
+
+    if (!stack.IsEmpty()) {
+
+        // kunin ang id number ng destination client
+        ZeroMemory(&tvi, sizeof(TV_ITEM));
+
+        tvi.mask = TVIF_HANDLE | TVIF_PARAM;
+        tvi.hItem = hItem;
+
+        TreeView_GetItem(hTree1, &tvi);
+
+        data = (TREE_VIEW_DATA*)tvi.lParam;
+
+        // kompyutin ang size na isesend sa destination client
+        count = 0LL;
+        stack.Reset();
+        while (!stack.IsEnd()) {
+            stack.Read(&str2);
+            count += wcslen(str2);
+        }
+
+        size = 2LL * stack.GetCount() * sizeof(int) + count * sizeof(wchar_t) + sizeof(int) + sizeof(long long);
+
+        // isend ang mga ito sa server
+        // ang data->value ay ang id number ng destination client
+        // ang client.GetId() ay ang id number ng source client
+        client.Send(CClient::FORWARD);
+        client.Send(data->value);
+        client.Send(size);
+
+        while (!stack.IsEmpty()) {
+
+            stack.Pop(str1, MAX_PATH);
+
+            client.Send(CClient::STRINGS);
+            client.Send(str1);
+        }
+
+        client.Send(CClient::REQUEST_FILE);
+        client.Send(client.GetId());
+    }
 }
 
 //
@@ -775,6 +910,7 @@ void OnCreate(HWND hWnd)
     EnableMenuItem(hMenu, IDM_CONNECT, MF_ENABLED);
     EnableMenuItem(hMenu, IDM_DISCONNECT, MF_DISABLED);
     EnableMenuItem(hMenu, IDM_EXIT, MF_ENABLED);
+    EnableMenuItem(hMenu, IDM_DOWNLOAD, MF_BYCOMMAND | MF_DISABLED);
 
     // unang posisyon ng horizontal splitter
     rect2.left = PADDING;
@@ -933,6 +1069,63 @@ void OnClientExit(HWND hWnd)
 }
 
 //
-void OnToolsOutput1(HWND hWnd)
+void OnToolsDownload(HWND hWnd)
 {
+    HTREEITEM hItem;
+    TV_ITEM tvi;
+    TREE_VIEW_DATA* data;
+    CStack stack;
+    long long count, size;
+    int i;
+    wchar_t str1[MAX_PATH];
+    wchar_t* str;
+
+    // kunin ang file name
+    i = ListView_GetNextItem(hList1, -1, LVNI_SELECTED);
+    ListView_GetItemText(hList1, i, 0, str1, MAX_PATH);
+    stack.Push(str1);
+
+    hItem = TreeView_GetSelection(hTree1);
+
+    // kunin ang id number ng destination client
+    ZeroMemory(&tvi, sizeof(TV_ITEM));
+
+    tvi.mask = TVIF_HANDLE | TVIF_PARAM;
+    tvi.hItem = hItem;
+
+    TreeView_GetItem(hTree1, &tvi);
+
+    data = (TREE_VIEW_DATA*)tvi.lParam;
+
+    // kunin ang path name
+    TreeView_GetHierarchicalItem(&stack, hTree1, hItem);
+    stack.Pop(str1, MAX_PATH);
+
+    // kompyutin ang size na isesend sa destination client
+    count = 0LL;
+    stack.Reset();
+    while (!stack.IsEnd()) {
+        stack.Read(&str);
+        count += wcslen(str);
+    }
+
+    size = 2LL * stack.GetCount() * sizeof(int) + count * sizeof(wchar_t) + sizeof(int) + sizeof(long long);
+
+    // isend ang mga ito sa server
+    // ang data->value ay id number ng destination client
+    // ang client.GetId() ay id number ng source client
+    client.Send(CClient::FORWARD);
+    client.Send(data->value);
+    client.Send(size);
+
+    while (!stack.IsEmpty()) {
+
+        stack.Pop(str1, MAX_PATH);
+
+        client.Send(CClient::STRINGS);
+        client.Send(str1);
+    }
+
+    client.Send(CClient::REQUEST_CONTENT);
+    client.Send(client.GetId());
 }
