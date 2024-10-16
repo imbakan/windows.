@@ -53,7 +53,7 @@ BEGIN
     END
     POPUP "&Tools"
     BEGIN
-        MENUITEM "Output 1", IDM_OUTPUT_1
+        MENUITEM "Download",        IDM_DOWNLOAD
     END
 END
 
