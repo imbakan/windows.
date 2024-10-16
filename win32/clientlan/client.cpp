@@ -7,7 +7,6 @@ CClient::CClient(const char* port)
 {
 	thread1 = NULL;
 	hWnd = NULL;
-
 	strcpy_s(this->port, MAX_PORT_STRING, port);
 }
 
@@ -79,49 +78,42 @@ void CClient::OutputBuffer(const char* txt, char* buffer, int count)
 }
 
 //
-void CClient::OutputBuffer(const char* txt, int value)
+void CClient::FormatWithCommas(wchar_t* str, int size, unsigned __int64 num)
 {
-	const int n = sizeof(int);
-	int* p;
-	int i;
-	char buffer[n];
-	char str[10];
+	unsigned __int64 quo, rem, dividend;
+	wchar_t* str1, * str2, * str3;
 
-	p = (int*)buffer;
-	*p = value;
+	str1 = new wchar_t[size];
+	str2 = new wchar_t[size];
+	str3 = new wchar_t[size];
 
-	OutputDebugStringA(txt);
+	quo = num;
 
-	for (i = 0; i < n; i++) {
+	wcscpy_s(str2, size, L"");
 
-		sprintf_s(str, 10, " %02x", (unsigned char)buffer[i]);
-		OutputDebugStringA(str);
-	}
+	do {
 
-	OutputDebugStringA("\n");
-}
+		dividend = quo;
 
-//
-void CClient::OutputBuffer(const char* txt, long long value)
-{
-	const int n = sizeof(long long);
-	long long* p;
-	int i;
-	char buffer[n];
-	char str[10];
+		quo = dividend / 1000LL;
+		rem = dividend % 1000LL;
 
-	p = (long long*)buffer;
-	*p = value;
+		if (quo == 0)
+			swprintf_s(str1, size, L",%lld", rem);
+		else
+			swprintf_s(str1, size, L",%03lld", rem);
 
-	OutputDebugStringA(txt);
+		wcscpy_s(str3, size, str1);
+		wcscat_s(str3, size, str2);
+		wcscpy_s(str2, size, str3);
 
-	for (i = 0; i < n; i++) {
+	} while (quo > 0);
 
-		sprintf_s(str, 10, " %02x", (unsigned char)buffer[i]);
-		OutputDebugStringA(str);
-	}
+	wcscpy_s(str, size, &str3[1]);
 
-	OutputDebugStringA("\n");
+	delete[] str1;
+	delete[] str2;
+	delete[] str3;
 }
 
 //
@@ -143,7 +135,7 @@ void CClient::GetDrives(wchar_t*** letter, wchar_t*** name, int* count)
 			// ito ay ang drive volume (Windows)
 			GetVolumeInformation(pbuffer, volume, MAX_PATH, NULL, NULL, NULL, NULL, 0);
 
-			// ito ay ang drive letter at colon (C:)
+			// ito ay ang drive letter (C:)
 			wcscpy_s(drive, MAX_PATH, pbuffer);
 			n = wcslen(drive);
 			drive[n - 1] = '\0';
@@ -155,7 +147,7 @@ void CClient::GetDrives(wchar_t*** letter, wchar_t*** name, int* count)
 			// pagsamahin ang drive letter at volume, ito ang drive name
 			swprintf_s(str1, MAX_PATH, L"%s (%s)", volume, drive);
 
-			// ilagay sa list ang pangalan at letter ng drive
+			// iadd 'to sa list
 			que1.Add(str1);
 			que2.Add(drive);
 
@@ -163,12 +155,11 @@ void CClient::GetDrives(wchar_t*** letter, wchar_t*** name, int* count)
 			pbuffer += n + 1;
 		}
 
-		// mag-allocate
+		// ilagay sa array ang nasa list
 		*count = que1.GetCount();
 		*name = new wchar_t* [*count];
 		*letter = new wchar_t* [*count];
 
-		// ilagay sa array ang nasa list
 		i = 0;
 
 		while (!que1.IsEmpty()) {
@@ -189,7 +180,16 @@ void CClient::GetDrives(wchar_t*** letter, wchar_t*** name, int* count)
 	}
 }
 
-//
+
+//   |<--------------------------------- BUFFER_SIZE ------------------------------->|
+//             |<------------ on hand ----------->|<---------- buffer size --------->|
+//   +----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+
+//   |  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
+//   +----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+
+//                ^                                  ^
+//                |                                  |
+//             index[0]                           index[1]
+
 void CClient::OnNeedData(char* buffer, int* index, int* buffer_size, bool* needdata, CQueue_i* order, int* next)
 {
 	int i, k, n;
@@ -210,7 +210,7 @@ void CClient::OnNeedData(char* buffer, int* index, int* buffer_size, bool* needd
 	order->Remove(next);
 }
 
-//
+// iset dito ang order ng execution
 void CClient::OnSetOrder(bool* needdata, CQueue_i* order, int* next, int cmd)
 {
 	*needdata = false;
@@ -261,9 +261,37 @@ void CClient::OnSetOrder(bool* needdata, CQueue_i* order, int* next, int cmd)
 		order->Add(GET_INTEGER);
 		order->Add(SET_ORDER);
 		break;
+	case REPLY_DIRECTORY:
+		order->Add(POPULATE_WITH_DIRECTORIES);
+		order->Add(GET_INTEGER);
+		order->Add(SET_ORDER);
+		break;
+	case REPLY_FILE:
+		order->Add(POPULATE_WITH_FILES);
+		order->Add(GET_INTEGER);
+		order->Add(SET_ORDER);
+		break;
 	case REQUEST_DRIVE:
 		order->Add(GET_LONGLONG);
 		order->Add(ENUMERATE_DRIVES);
+		order->Add(GET_INTEGER);
+		order->Add(SET_ORDER);
+		break;
+	case REQUEST_DIRECTORY:
+		order->Add(GET_LONGLONG);
+		order->Add(ENUMERATE_DIRECTORIES);
+		order->Add(GET_INTEGER);
+		order->Add(SET_ORDER);
+		break;
+	case REQUEST_FILE:
+		order->Add(GET_LONGLONG);
+		order->Add(ENUMERATE_FILES);
+		order->Add(GET_INTEGER);
+		order->Add(SET_ORDER);
+		break;
+	case REQUEST_CONTENT:
+		order->Add(GET_LONGLONG);
+		order->Add(ENUMERATE_CONTENTS);
 		order->Add(GET_INTEGER);
 		order->Add(SET_ORDER);
 		break;
@@ -396,7 +424,7 @@ void CClient::OnDepopulateByDevice(CQueue_i* order, int* next, long long value)
 	LPARAM lParam1, lParam2;
 	TREE_VIEW_DATA* data = NULL;
 
-	// hanapin ang tree item na ang id ay equal sa value
+	// hanapin ang tree node na ang id ay equal sa value
 	lParam1 = 0;
 	hItem = TreeView_GetRoot(hTree);
 
@@ -418,9 +446,12 @@ void CClient::OnDepopulateByDevice(CQueue_i* order, int* next, long long value)
 		hItem = TreeView_GetNextSibling(hTree, hItem);
 	}
 
-	// idelete ang data at ang tree item nito
+	// idelete ang allocated memmory at ang tree node nato
 	delete data;
+
 	TreeView_DeleteItem(hTree, hItem);
+	ListView_DeleteAllItems(hList);
+	SetWindowText(hEdit, L"");
 
 	order->Remove(next);
 }
@@ -503,16 +534,15 @@ void CClient::OnPopulateWithDevices(CQueue_i* order, int* next, CQueue_a* que)
 }
 
 //
-void CClient::OnPopulateWithDrives(CQueue_i* order, int* next, CQueue_s* que)
+void CClient::OnPopulateNode(CQueue_i* order, int* next, CQueue_s* que, int image, int selectedimage)
 {
 	TVINSERTSTRUCT tvis;
 	TV_ITEM tvi;
 	TREE_VIEW_DATA* data;
-	int iImage, iSelectedImage;
 	long long value;
 	wchar_t str[MAX_PATH];
 
-	// kunin ang param ng tree item na 'to
+	// kunin ang id number ng node na 'to
 	ZeroMemory(&tvi, sizeof(TV_ITEM));
 
 	tvi.mask = TVIF_HANDLE | TVIF_PARAM;
@@ -523,20 +553,17 @@ void CClient::OnPopulateWithDrives(CQueue_i* order, int* next, CQueue_s* que)
 	data = (TREE_VIEW_DATA*)tvi.lParam;
 	value = data->value;
 
-	// ilagay ang client id sa bawat child na idadagdag
-	// ang mga child ay nakacollapse sa umpisa
-	// kaya ang member variable is_collapse ay true
-	iImage = 2;
-	iSelectedImage = 3;
-
+	// idagdag ang mga child sa node na 'to
+	// iset ang id number na nakuha sa itaas sa bawat child na idadagdag
+	// iset din ang collapse indicator sa bawat child na idadagdag
 	tvis.hParent = hItem;
 	tvis.hInsertAfter = TVI_LAST;
 	tvis.item.mask = TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_TEXT | TVIF_PARAM | TVIF_CHILDREN;
 	tvis.item.hItem = NULL;
 	tvis.item.state = 0;
 	tvis.item.stateMask = 0;
-	tvis.item.iImage = iImage;
-	tvis.item.iSelectedImage = iSelectedImage;
+	tvis.item.iImage = image;
+	tvis.item.iSelectedImage = selectedimage;
 	tvis.item.cChildren = 1;
 
 	while (!que->IsEmpty()) {
@@ -554,7 +581,8 @@ void CClient::OnPopulateWithDrives(CQueue_i* order, int* next, CQueue_s* que)
 		TreeView_InsertItem(hTree, &tvis);
 	}
 
-	// kunin ang param ng tree item na 'to
+	// baguhin ang collapse indicator ng node na 'to sa false
+	// kasi ito ay expand na
 	ZeroMemory(&tvi, sizeof(TV_ITEM));
 
 	tvi.mask = TVIF_HANDLE | TVIF_PARAM;
@@ -567,8 +595,6 @@ void CClient::OnPopulateWithDrives(CQueue_i* order, int* next, CQueue_s* que)
 
 	delete data;
 
-	// gawing false ang member variable is_collapse
-	// dahil ito ay naka-expadnd na
 	data = new TREE_VIEW_DATA;
 	data->value = value;
 	data->is_collapse = false;
@@ -581,8 +607,46 @@ void CClient::OnPopulateWithDrives(CQueue_i* order, int* next, CQueue_s* que)
 
 	TreeView_SetItem(hTree, &tvi);
 
-	// iexpand ang tree item
+	// iexpand ang node
 	TreeView_Expand(hTree, hItem, TVE_EXPAND);
+
+	order->Remove(next);
+}
+
+//
+void CClient::OnPopulateWithFiles(CQueue_i* order, int* next, CQueue_s* que)
+{
+	LV_ITEM lvi;
+	int index1, index2;
+	wchar_t str1[MAX_PATH], str2[100], str3[100];
+
+	que->Remove(str1, MAX_PATH);
+
+	SetWindowText(hEdit, str1);
+
+	lvi.mask = LVIF_TEXT | LVIF_IMAGE | LVIF_STATE;
+	lvi.state = 0;
+	lvi.stateMask = 0;
+	lvi.iImage = 6;
+
+	index1 = index2 = 0;
+
+	while (!que->IsEmpty()) {
+
+		que->Remove(str1, MAX_PATH);
+		que->Remove(str2, 100);
+		que->Remove(str3, 100);
+
+		lvi.iItem = index2;
+		lvi.iSubItem = 0;
+		lvi.pszText = str1;
+
+		ListView_InsertItem(hList, &lvi);					// column 1
+		ListView_SetItemText(hList, index2, 1, str2);		// column 2
+		ListView_SetItemText(hList, index2, 2, str3);		// column 3
+
+		++index2;
+	}
 
 	order->Remove(next);
 }
@@ -593,6 +657,7 @@ void CClient::OnEnumerateDrives(CQueue_i* order, int* next, long long value)
 	int i;
 	long long size, count;
 
+	// kompyutin ang size na isesend sa destination client
 	count = 0LL;
 
 	for (i = 0; i < drive_count; i++)
@@ -600,18 +665,230 @@ void CClient::OnEnumerateDrives(CQueue_i* order, int* next, long long value)
 
 	size = count * sizeof(wchar_t) + 2LL * drive_count * sizeof(int) + sizeof(int);
 
+	// isend ang mga ito sa server
+	// ang value ay id number ng destination client
 	Send(FORWARD);
 	Send(value);
 	Send(size);
 
 	for (i = 0; i < drive_count; i++) {
 
-		Send(STRINGS);                      // drive_count * sizeof(int)
-		Send(drive_name[i]);                 // drive_count * sizeof(int),      count * sizeof(wchar_t)
-
+		Send(STRINGS);
+		Send(drive_name[i]);
 	}
 
-	Send(REPLY_DRIVE);                      // sizeof(int)
+	Send(REPLY_DRIVE);
+
+	order->Remove(next);
+}
+
+//
+void CClient::OnEnumerateDirectories(CQueue_i* order, int* next, CQueue_s* que, long long value)
+{
+	HANDLE handle;
+	WIN32_FIND_DATA data;
+	CQueue_s array_s;
+	int i;
+	long long count, size;
+	wchar_t str[MAX_PATH], path[MAX_PATH];
+
+	// buuin ang path name
+	que->Remove(str, MAX_PATH);
+
+	for (i = 0; i < drive_count; i++)
+		if (wcscmp(str, drive_name[i]) == 0)
+			break;
+
+	wcscpy_s(path, MAX_PATH, drive_letter[i]);
+
+	while (!que->IsEmpty()) {
+		que->Remove(str, MAX_PATH);
+		wcscat_s(path, MAX_PATH, L"\\");
+		wcscat_s(path, MAX_PATH, str);
+	}
+
+	wcscat_s(path, MAX_PATH, L"\\*.*");
+
+	// kunin ang mga directory at
+	// kompyutin ang size na isesend sa destination client
+	handle = FindFirstFile(path, &data);
+	if (handle != INVALID_HANDLE_VALUE) {
+
+		count = 0LL;
+
+		do {
+			if (!wcscmp(data.cFileName, L"..") || !wcscmp(data.cFileName, L".")) continue;
+			if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+				count += wcslen(data.cFileName);
+				array_s.Add(data.cFileName);
+			}
+		} while (FindNextFile(handle, &data));
+
+		FindClose(handle);
+
+		size = 2LL * array_s.GetCount() * sizeof(int) + count * sizeof(wchar_t) + sizeof(int);
+	}
+
+	// isend ang mga ito sa server kung meron
+	// ang value ay id number ng destination client
+	if (!array_s.IsEmpty()) {
+
+		Send(FORWARD);
+		Send(value);
+		Send(size);
+
+		while (!array_s.IsEmpty()) {
+
+			array_s.Remove(str, MAX_PATH);
+
+			Send(STRINGS);
+			Send(str);
+		}
+
+		Send(REPLY_DIRECTORY);
+	}
+
+	order->Remove(next);
+}
+
+//
+void CClient::OnEnumerateFiles(CQueue_i* order, int* next, CQueue_s* que, long long value) {
+	HANDLE handle;
+	WIN32_FIND_DATA data;
+	SYSTEMTIME t;
+	CQueue_s array_s;
+	int i, n1, n2, hh;
+	long long count, size;
+	wchar_t str1[MAX_PATH], str2[50], str3[100], str4[3];
+	wchar_t str[MAX_PATH], path[MAX_PATH];
+
+	// buuin ang path name
+	que->Remove(str, MAX_PATH);
+
+	for (i = 0; i < drive_count; i++)
+		if (wcscmp(str, drive_name[i]) == 0)
+			break;
+
+	wcscpy_s(path, MAX_PATH, drive_letter[i]);
+
+	while (!que->IsEmpty()) {
+		que->Remove(str, MAX_PATH);
+		wcscat_s(path, MAX_PATH, L"\\");
+		wcscat_s(path, MAX_PATH, str);
+	}
+
+	wcscat_s(path, MAX_PATH, L"\\*.*");
+
+	// kunin ang mga files at
+	// kompyutin ang size na isesend sa destination client
+	handle = FindFirstFile(path, &data);
+	if (handle != INVALID_HANDLE_VALUE) {
+
+		count = 0LL;
+		n1 = n2 = 0;
+
+		do {
+			if (!wcscmp(data.cFileName, L"..") || !wcscmp(data.cFileName, L".")) continue;
+			if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+				++n1;
+			}
+			else {
+				FileTimeToSystemTime(&data.ftLastWriteTime, &t);
+
+				if (t.wHour == 0) {
+					hh = 12;
+					wcscpy_s(str4, 3, L"AM");
+				}
+				else if (t.wHour < 12) {
+					hh = t.wHour;
+					wcscpy_s(str4, 3, L"AM");
+
+				}
+				else if (t.wHour == 12) {
+					hh = t.wHour;
+					wcscpy_s(str4, 3, L"PM");
+				}
+				else {
+					hh = t.wHour - 12;
+					wcscpy_s(str4, 3, L"PM");
+				}
+
+				wcscpy_s(str1, MAX_PATH, data.cFileName);
+				swprintf_s(str2, 50, L"%2d/%02d/%04d %2d:%02d:%02d %s", t.wMonth, t.wDay, t.wYear, hh, t.wMinute, t.wSecond, str4);
+
+				size = (unsigned __int64)data.nFileSizeHigh * ((unsigned __int64)MAXDWORD + 1) + (unsigned __int64)data.nFileSizeLow;
+				FormatWithCommas(str3, 100, size);
+
+				count += wcslen(str1);
+				count += wcslen(str2);
+				count += wcslen(str3);
+
+				array_s.Add(str1);
+				array_s.Add(str2);
+				array_s.Add(str3);
+
+				++n2;
+			}
+		} while (FindNextFile(handle, &data));
+
+		FindClose(handle);
+
+		swprintf_s(str, MAX_PATH, L"%d files %d folders", n2, n1);
+
+		size = 2LL * array_s.GetCount() * sizeof(int) + count * sizeof(wchar_t) + sizeof(int);
+		size += (2LL * sizeof(int) + wcslen(str) * sizeof(wchar_t));
+	}
+
+	// isend ang mga ito sa server kung meron
+	// ang value ay id number ng destination client
+	if (!array_s.IsEmpty()) {
+
+		Send(FORWARD);
+		Send(value);
+		Send(size);
+
+		Send(STRINGS);
+		Send(str);
+
+		while (!array_s.IsEmpty()) {
+
+			array_s.Remove(str, MAX_PATH);
+
+			Send(STRINGS);
+			Send(str);
+		}
+
+		Send(REPLY_FILE);
+	}
+
+	order->Remove(next);
+}
+
+//
+void CClient::OnEnumerateContents(CQueue_i* order, int* next, CQueue_s* que, long long value)
+{
+	int i;
+	wchar_t str[MAX_PATH], path[MAX_PATH];
+
+	// buuin ang path name
+	que->Remove(str, MAX_PATH);
+
+	for (i = 0; i < drive_count; i++)
+		if (wcscmp(str, drive_name[i]) == 0)
+			break;
+
+	wcscpy_s(path, MAX_PATH, drive_letter[i]);
+
+	while (!que->IsEmpty()) {
+		que->Remove(str, MAX_PATH);
+		wcscat_s(path, MAX_PATH, L"\\");
+		wcscat_s(path, MAX_PATH, str);
+	}
+
+	OutputDebugString(path);
+	OutputDebugString(L"\n");
+
+	uploader.Start(path);
 
 	order->Remove(next);
 }
@@ -689,7 +966,7 @@ DWORD WINAPI CClient::Function1(LPVOID lpParam)
 	struct addrinfo hints;
 	struct addrinfo* result = NULL;
 	struct addrinfo* ptr = NULL;
-	int errcode, count, buffer_size, index[2], next;
+	int errcode, count, buffer_size, index[2], next, addrlen;
 	char* buffer;
 	char* pbuffer;
 	bool need_data;
@@ -756,7 +1033,7 @@ DWORD WINAPI CClient::Function1(LPVOID lpParam)
 
 			if (count <= 0) break;
 
-			p->OutputBuffer("Recv", &buffer[index[1]], count);
+			//p->OutputBuffer("R:", &buffer[index[1]], count);
 
 			index[1] += count;
 			need_data = false;
@@ -765,18 +1042,25 @@ DWORD WINAPI CClient::Function1(LPVOID lpParam)
 		switch (next) {
 		case SET_ORDER:						p->OnSetOrder(&need_data, &order, &next, ivalue);						break;
 		case NEED_DATA:						p->OnNeedData(buffer, index, &buffer_size, &need_data, &order, &next);	break;
-		case GET_INTEGER:					p->OnGetInteger(buffer, index, &order, &next, &ivalue);					break;
-		case GET_LONGLONG:					p->OnGetLongLong(buffer, index, &order, &next, &llvalue);				break;
-		case GET_STRING:					p->OnGetString(buffer, index, &order, &next, ivalue, &string);		break;
-		case COLLECT_STRING:				p->OnCollectString(&order, &next, &que, string);						break;
-		case COLLECT_ATTRIBUTE:				p->OnCollectAttribute(&order, &next, &attribute, string, llvalue);	break;
-		case RUN_ONCE:						p->OnRunOnce(&order, &next);											break;
-		case ID_RECEIVED:					p->OnIdReceived(&order, &next, llvalue);								break;
-		case DEPOPULATE_BY_DEVICE:			p->OnDepopulateByDevice(&order, &next, llvalue);						break;
-		case POPULATE_WITH_DEVICE:			p->OnPopulateWithDevice(&order, &next, string, llvalue);				break;
-		case POPULATE_WITH_DEVICES:			p->OnPopulateWithDevices(&order, &next, &attribute);					break;
-		case POPULATE_WITH_DRIVES:			p->OnPopulateWithDrives(&order, &next, &que);							break;
-		case ENUMERATE_DRIVES:				p->OnEnumerateDrives(&order, &next, llvalue);							break;
+		case GET_INTEGER:					p->OnGetInteger(buffer, index, &order, &next, &ivalue);							break;
+		case GET_LONGLONG:					p->OnGetLongLong(buffer, index, &order, &next, &llvalue);						break;
+		case GET_STRING:					p->OnGetString(buffer, index, &order, &next, ivalue, &string);				break;
+		case COLLECT_STRING:				p->OnCollectString(&order, &next, &que, string);								break;
+		case COLLECT_ATTRIBUTE:				p->OnCollectAttribute(&order, &next, &attribute, string, llvalue);			break;
+		case RUN_ONCE:						p->OnRunOnce(&order, &next);													break;
+		case ID_RECEIVED:					p->OnIdReceived(&order, &next, llvalue);										break;
+		case DEPOPULATE_BY_DEVICE:			p->OnDepopulateByDevice(&order, &next, llvalue);								break;
+		case POPULATE_WITH_DEVICE:			p->OnPopulateWithDevice(&order, &next, string, llvalue);						break;
+		case POPULATE_WITH_DEVICES:			p->OnPopulateWithDevices(&order, &next, &attribute);							break;
+
+		case POPULATE_WITH_DRIVES:			p->OnPopulateNode(&order, &next, &que, 2, 3);					break;
+		case POPULATE_WITH_DIRECTORIES:		p->OnPopulateNode(&order, &next, &que, 4, 5);					break;
+		case POPULATE_WITH_FILES:			p->OnPopulateWithFiles(&order, &next, &que);									break;
+
+		case ENUMERATE_DRIVES:				p->OnEnumerateDrives(&order, &next, llvalue);									break;
+		case ENUMERATE_DIRECTORIES:			p->OnEnumerateDirectories(&order, &next, &que, llvalue);						break;
+		case ENUMERATE_FILES:				p->OnEnumerateFiles(&order, &next, &que, llvalue);								break;
+		case ENUMERATE_CONTENTS:			p->OnEnumerateContents(&order, &next, &que, llvalue);							break;
 		}
 	}
 
