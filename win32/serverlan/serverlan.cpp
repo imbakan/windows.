@@ -1,7 +1,7 @@
 
 // client-server model
 // server side
-// LAN
+// LAN, WiFi
 
 #include "framework.h"
 #include "serverlan.h"
@@ -273,7 +273,8 @@ void OnClientRunning(HWND hWnd, WPARAM wParam, LPARAM lParam)
     struct tm a;
     wchar_t str[200], str1[100], str2[100];
 
-    // isend ang id number sa kumonektang client
+    // ang server ay nag-aasign ng number sa kumonektang client
+    // isend 'to sa client
     client->Send(CClient::CONFIRM);
     client->Send(client->GetId());
 
