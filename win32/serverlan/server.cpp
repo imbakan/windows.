@@ -5,8 +5,8 @@
 // constructor
 CServer::CServer(const char* port)
 {
-	thread = NULL;
 	strcpy_s(this->port, MAX_PORT_STRING, port);
+	thread = NULL;
 	hWnd = NULL;
 	serversocket = INVALID_SOCKET;
 }
@@ -80,6 +80,11 @@ DWORD WINAPI CServer::Function(LPVOID lpParam)
 	freeaddrinfo(result);
 
 	errcode = listen(p->serversocket, SOMAXCONN);
+
+	if (errcode == SOCKET_ERROR) {
+		SendMessage(p->hWnd, WM_LOG_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
+		goto DITO;
+	}
 
 	SendMessage(p->hWnd, WM_SERVER_RUNNING, 0, 0);
 
