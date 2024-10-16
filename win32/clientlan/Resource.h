@@ -20,7 +20,7 @@
 #define IDM_DISCONNECT			112
 #define IDM_CLOSE				121
 
-#define IDM_OUTPUT_1			131
+#define IDM_DOWNLOAD			131
 
 #define IDI_ICON_1				151
 #define IDI_ICON_2				152
