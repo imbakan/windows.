@@ -1,22 +1,20 @@
 
-// client-server model
-// server side
-// LAN, WiFi
-
 #include "framework.h"
-#include "serverlan.h"
+#include "server_lan.h"
 #include "server.h"
 #include "client.h"
 
-#define DEFAULT_PORT    "27015"
+#define DEFAULT_PORT    "54105"
 
 const int MAX_LOADSTRING = 100;
+
 const int PADDING = 2;
 const int SPLITTER = 6;
 
-HINSTANCE hInst;
-WCHAR szTitle[MAX_LOADSTRING];
-WCHAR szWindowClass[MAX_LOADSTRING];
+// Global Variables:
+HINSTANCE hInst;                                // current instance
+WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
+WCHAR szWindowClass[MAX_LOADSTRING];            // main window class name
 
 RECT rect;
 bool dragging;
@@ -27,7 +25,10 @@ HWND hList1, hEdit1;
 WSADATA wsadata;
 CServer server(DEFAULT_PORT);
 
-LRESULT CALLBACK    WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+// Forward declarations of functions included in this code module:
+LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
+
+void GetIPAddress(wchar_t* str, int size);
 
 void OnLogMessage(HWND hWnd, WPARAM wParam, LPARAM lParam);
 void OnServerRunning(HWND hWnd, WPARAM wParam, LPARAM lParam);
@@ -35,6 +36,10 @@ void OnServerShuttingDown(HWND hWnd, WPARAM wParam, LPARAM lParam);
 void OnCreateClient(HWND hWnd, WPARAM wParam, LPARAM lParam);
 void OnClientRunning(HWND hWnd, WPARAM wParam, LPARAM lParam);
 void OnClientShuttingDown(HWND hWnd, WPARAM wParam, LPARAM lParam);
+
+void OnItemChanged(HWND hWnd, LPARAM lParam);
+void OnSetFocus(HWND hWnd, LPARAM lParam);
+void OnKillFocus(HWND hWnd, LPARAM lParam);
 
 void OnLButtonDown(HWND hWnd, int x, int y);
 void OnLButtonUp(HWND hWnd, int x, int y);
@@ -46,26 +51,22 @@ void OnCreate(HWND hWnd);
 void OnDestroy(HWND hWnd);
 void OnClose(HWND hWnd);
 
-void OnItemChanged(HWND hWnd, LPARAM lParam);
-void OnSetFocus(HWND hWnd, LPARAM lParam);
-void OnKillFocus(HWND hWnd, LPARAM lParam);
-
 void OnServerRun(HWND hWnd);
 void OnServerShutdown(HWND hWnd);
 void OnServerExit(HWND hWnd);
 
 void OnClientClose(HWND hWnd);
 
-// main program
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
 {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
+    // Initialize global strings.
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_SERVERLAN, szWindowClass, MAX_LOADSTRING);
 
-    // iregister ang window class
+    // Registers the window class.
     WNDCLASSEXW wcex;
 
     wcex.cbSize = sizeof(WNDCLASSEX);
@@ -84,11 +85,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
     RegisterClassExW(&wcex);
 
+    // Store instance handle in our global variable.
     hInst = hInstance;
 
-    // gumawa ng window
+    // Creates main window.
     int X, Y, nWidth, nHeight, Cx, Cy;
 
+    // 1080p: 1920 x 1080
+    //  720p: 1280 x  720
     //  480p:  854 x  480
 
     Cx = 854;
@@ -98,26 +102,22 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
     nHeight = Cy + 59;
 
     X = (GetSystemMetrics(SM_CXSCREEN) - nWidth) / 2;
-    Y = (GetSystemMetrics(SM_CYSCREEN) - nHeight) / 3;
+    Y = (GetSystemMetrics(SM_CYSCREEN) - nHeight) / 4;
 
     HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-        X, Y,
-        nWidth, nHeight,
-        nullptr, nullptr, hInstance, nullptr);
+        X, Y, nWidth, nHeight, nullptr, nullptr, hInstance, nullptr);
 
-    // kapag may error, wag irun
     if (!hWnd)
         return FALSE;
 
-    // idisplay ang window
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_SERVERLAN));
 
-    // message loop
     MSG msg;
 
+    // main message loop
     while (GetMessage(&msg, nullptr, 0, 0))
     {
         if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
@@ -130,7 +130,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
     return (int)msg.wParam;
 }
 
-// window callback function
+// Processes messages for the main window.
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
@@ -141,11 +141,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_CREATE_CLIENT:          OnCreateClient(hWnd, wParam, lParam);       break;
     case WM_CLIENT_RUNNING:         OnClientRunning(hWnd, wParam, lParam);      break;
     case WM_CLIENT_SHUTTING_DOWN:   OnClientShuttingDown(hWnd, wParam, lParam); break;
-
-    case WM_LBUTTONDOWN:OnLButtonDown(hWnd, LOWORD(lParam), HIWORD(lParam));	break;
-    case WM_LBUTTONUP:	OnLButtonUp(hWnd, LOWORD(lParam), HIWORD(lParam));		break;
-    case WM_MOUSEMOVE:	OnMouseMove(hWnd, LOWORD(lParam), HIWORD(lParam));		break;
-    case WM_SIZE:       OnSize(hWnd, LOWORD(lParam), HIWORD(lParam));    break;
 
     case WM_NOTIFY:
         if (((LPNMHDR)lParam)->idFrom == IDC_LIST1) {
@@ -161,6 +156,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         break;
 
+    case WM_LBUTTONDOWN:    OnLButtonDown(hWnd, LOWORD(lParam), HIWORD(lParam)); break;
+    case WM_LBUTTONUP:	    OnLButtonUp(hWnd, LOWORD(lParam), HIWORD(lParam));	break;
+    case WM_MOUSEMOVE:	    OnMouseMove(hWnd, LOWORD(lParam), HIWORD(lParam));	break;
+    case WM_SIZE:           OnSize(hWnd, LOWORD(lParam), HIWORD(lParam)); break;
+
     case WM_COMMAND:
 
         switch (LOWORD(wParam))
@@ -174,18 +174,69 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         break;
 
-    case WM_PAINT:      OnPaint(hWnd);								break;
-    case WM_CREATE:     OnCreate(hWnd);								break;
-    case WM_DESTROY:    OnDestroy(hWnd);							break;
-    case WM_CLOSE:      OnClose(hWnd);								break;
-
+    case WM_PAINT:          OnPaint(hWnd);                                          break;
+    case WM_CREATE:         OnCreate(hWnd);                                         break;
+    case WM_DESTROY:        OnDestroy(hWnd);                                        break;
+    case WM_CLOSE:          OnClose(hWnd);								            break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
     return 0;
 }
 
-//
+void GetIPAddress(wchar_t* str, int size)
+{
+    char name[100];
+    struct addrinfo hints;
+    struct addrinfo* result = NULL;
+    struct addrinfo* ptr = NULL;
+    sockaddr_in* ipv4;
+    sockaddr_in6* ipv6;
+    void* addr;
+    int errcode;
+    char ip[2][INET6_ADDRSTRLEN];
+
+    errcode = gethostname(name, sizeof(name));
+
+    if (errcode != 0) {
+        OutputDebugString(L"gethostname error\n");
+        return;
+    }
+
+    ZeroMemory(&hints, sizeof(hints));
+
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+
+    errcode = getaddrinfo(name, DEFAULT_PORT, &hints, &result);
+
+    if (errcode != 0) {
+        OutputDebugString(L"getaddrinfo error\n");
+        return;
+    }
+
+    for (ptr = result; ptr != NULL; ptr = ptr->ai_next) {
+
+        switch (ptr->ai_addr->sa_family) {
+        case AF_INET6:
+            ipv6 = (sockaddr_in6*)ptr->ai_addr;
+            addr = &(ipv6->sin6_addr);
+            inet_ntop(AF_INET, addr, ip[0], INET6_ADDRSTRLEN);
+            break;
+        case AF_INET:
+            ipv4 = (sockaddr_in*)ptr->ai_addr;
+            addr = &(ipv4->sin_addr);
+            inet_ntop(AF_INET, addr, ip[1], INET6_ADDRSTRLEN);
+            break;
+        }
+    }
+
+    freeaddrinfo(result);
+
+    MultiByteToWideChar(CP_UTF8, 0, ip[1], -1, str, size);
+}
+
 void OnLogMessage(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
     wchar_t* str2 = (wchar_t*)lParam;
@@ -222,7 +273,6 @@ void OnLogMessage(HWND hWnd, WPARAM wParam, LPARAM lParam)
     SendMessage(hEdit1, EM_SCROLLCARET, 0, 0);
 }
 
-//
 void OnServerRunning(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
     wchar_t str[MAX_LOADSTRING];
@@ -252,7 +302,6 @@ void OnServerShuttingDown(HWND hWnd, WPARAM wParam, LPARAM lParam)
     EnableMenuItem(hMenu, IDM_EXIT, MF_ENABLED);
 }
 
-//
 void OnCreateClient(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
     SOCKET* socket = (SOCKET*)lParam;
@@ -261,21 +310,19 @@ void OnCreateClient(HWND hWnd, WPARAM wParam, LPARAM lParam)
     client->Run();
 }
 
-//
 void OnClientRunning(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
     CClient* client = (CClient*)lParam;
-
+    CClient* client1;
     LV_ITEM lvi;
-    CClient* item;
+    struct tm Tm;
+    time_t lltime;
     int index, i, n;
-    time_t ltime;
-    struct tm a;
-    wchar_t str[200], str1[100], str2[100];
+    wchar_t str1[100], str2[50];
 
-    // ang server ay nag-aasign ng number sa kumonektang client
+    // ang server ay nag-aasign ng id sa kumonektang client
     // isend 'to sa client
-    client->Send(CClient::CONFIRM);
+    client->Send(CClient::CONNECTED);
     client->Send(client->GetId());
 
     n = ListView_GetItemCount(hList1);
@@ -290,37 +337,36 @@ void OnClientRunning(HWND hWnd, WPARAM wParam, LPARAM lParam)
             lvi.iItem = i;
             ListView_GetItem(hList1, &lvi);
 
-            item = (CClient*)lvi.lParam;
+            client1 = (CClient*)lvi.lParam;
 
             client->Send(CClient::ATTRIBUTES);
-            client->Send(item->GetName());
-            client->Send(item->GetId());
+            client->Send(client1->GetName());
+            client->Send(client1->GetId());
         }
 
-        client->Send(CClient::REPLY_DEVICES);
+        client->Send(CClient::REPLY_DEVICE);
 
         // isend ang pangalan ng kumonektang client sa mga client na nasa list view
-        lvi.mask = LVIF_PARAM;
-
         for (i = 0; i < n; i++) {
 
             lvi.iItem = i;
             ListView_GetItem(hList1, &lvi);
 
-            item = (CClient*)lvi.lParam;
+            client1 = (CClient*)lvi.lParam;
 
-            item->Send(CClient::REPLY_DEVICE);
-            item->Send(client->GetName());
-            item->Send(client->GetId());
+            client1->Send(CClient::ATTRIBUTES);
+            client1->Send(client->GetName());
+            client1->Send(client->GetId());
+            client1->Send(CClient::REPLY_DEVICE);
         }
     }
 
     // iadd ang kumonektang client sa list view
     wcscpy_s(str1, 100, client->GetName());
 
-    time(&ltime);
-    _localtime64_s(&a, &ltime);
-    swprintf_s(str2, 100, L"%2d-%02d-%04d %2d:%02d:%02d", a.tm_mon + 1, a.tm_mday, a.tm_year + 1900, a.tm_hour, a.tm_min, a.tm_sec);
+    time(&lltime);
+    _localtime64_s(&Tm, &lltime);
+    swprintf_s(str2, 50, L"%2d-%02d-%04d %2d:%02d:%02d", Tm.tm_mon + 1, Tm.tm_mday, Tm.tm_year + 1900, Tm.tm_hour, Tm.tm_min, Tm.tm_sec);
 
     index = ListView_GetItemCount(hList1);
 
@@ -335,25 +381,21 @@ void OnClientRunning(HWND hWnd, WPARAM wParam, LPARAM lParam)
     ListView_InsertItem(hList1, &lvi);
     ListView_SetItemText(hList1, index, 1, str2);
 
-    swprintf_s(str, 200, L"The client thread 0x%llx has started.", client->GetId());
-    SendMessage(hWnd, WM_LOG_MESSAGE, 0, (LPARAM)str);
 }
 
-//
 void OnClientShuttingDown(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
-    CClient* client = (CClient*)lParam;
-
+    CClient* client1 = (CClient*)lParam;
+    CClient* client2;
     LVFINDINFO lvfi;
     LV_ITEM lvi;
-    CClient* item;
     int i, n;
-    wchar_t str[100];
+    //wchar_t str[100];
 
     // iremove ang client na 'to sa list view
     lvfi.flags = LVFI_PARAM;
     lvfi.psz = NULL;
-    lvfi.lParam = (LPARAM)client;
+    lvfi.lParam = (LPARAM)client1;
     lvfi.pt.x = 0;
     lvfi.pt.y = 0;
     lvfi.vkDirection = 0;
@@ -366,28 +408,53 @@ void OnClientShuttingDown(HWND hWnd, WPARAM wParam, LPARAM lParam)
         EnableMenuItem(hMenu, IDM_CLOSE, MF_BYCOMMAND | MF_DISABLED);
     }
 
-    swprintf_s(str, 100, L"The client thread 0x%llx has exited.", client->GetId());
-    SendMessage(hWnd, WM_LOG_MESSAGE, 0, (LPARAM)str);
-
     // ipaalam sa mga client na nasa list view na wala na ang client na 'to
     n = ListView_GetItemCount(hList1);
-    lvi.mask = LVIF_PARAM;
+
+    //swprintf_s(str, 100, L"%10d\n", n);
+    //OutputDebugString(str);
 
     for (i = 0; i < n; i++) {
 
         lvi.iItem = i;
         ListView_GetItem(hList1, &lvi);
 
-        item = (CClient*)lvi.lParam;
+        client2 = (CClient*)lvi.lParam;
 
-        item->Send(CClient::LEAVE);
-        item->Send(client->GetId());
+        //swprintf_s(str, 100, L"%-20s%20lld\n", client2->GetName(), client2->GetId());
+        //OutputDebugString(str);
+
+        client2->Send(CClient::LEAVE);
+        client2->Send(client1->GetId());
     }
 
-    delete client;
+    delete client1;
 }
 
-//
+void OnItemChanged(HWND hWnd, LPARAM lParam)
+{
+    HWND hList = ((LPNMHDR)lParam)->hwndFrom;
+    LPNMLISTVIEW pnmv = (LPNMLISTVIEW)lParam;
+
+    UINT uEnabled = (pnmv->uNewState == (LVIS_FOCUSED | LVIS_SELECTED)) ? MF_ENABLED : MF_DISABLED;
+
+    HMENU hMenu = GetMenu(hWnd);
+    EnableMenuItem(hMenu, IDM_CLOSE, uEnabled);
+}
+
+void OnSetFocus(HWND hWnd, LPARAM lParam)
+{
+    HMENU hMenu = GetMenu(hWnd);
+    EnableMenuItem(hMenu, IDM_CLOSE, MF_DISABLED);
+}
+
+void OnKillFocus(HWND hWnd, LPARAM lParam)
+{
+    HMENU hMenu = GetMenu(hWnd);
+    EnableMenuItem(hMenu, IDM_CLOSE, MF_DISABLED);
+}
+
+
 void OnLButtonDown(HWND hWnd, int x, int y)
 {
     if (rect.left < x && x < rect.right && rect.top < y && y < rect.bottom) {
@@ -397,14 +464,12 @@ void OnLButtonDown(HWND hWnd, int x, int y)
     }
 }
 
-//
 void OnLButtonUp(HWND hWnd, int x, int y)
 {
     dragging = false;
     ReleaseCapture();
 }
 
-//
 void OnMouseMove(HWND hWnd, int x, int y)
 {
     RECT cr;
@@ -472,7 +537,6 @@ void OnSize(HWND hWnd, int width, int height)
     MoveWindow(hEdit1, x1, y2, width1, height2, FALSE);
 }
 
-//
 void OnPaint(HWND hWnd)
 {
     PAINTSTRUCT ps;
@@ -482,7 +546,6 @@ void OnPaint(HWND hWnd)
     EndPaint(hWnd, &ps);
 }
 
-//
 void OnCreate(HWND hWnd)
 {
     wchar_t str[MAX_LOADSTRING];
@@ -554,9 +617,13 @@ void OnCreate(HWND hWnd)
     if (errcode != 0)
         OutputDebugString(GetErrorMessage(WSAGetLastError()));
 
+    wchar_t ip[INET6_ADDRSTRLEN];
+    GetIPAddress(ip, INET6_ADDRSTRLEN);
+
+    swprintf_s(str, MAX_LOADSTRING, L"Ang IP Address ng server ay %s", ip);
+    SetWindowText(hEdit1, str);
 }
 
-// irelease lahat bago mag-exit
 void OnDestroy(HWND hWnd)
 {
     ImageList_Destroy(himl);
@@ -564,57 +631,26 @@ void OnDestroy(HWND hWnd)
     PostQuitMessage(0);
 }
 
-//
 void OnClose(HWND hWnd)
 {
     MessageBox(hWnd, L"Gamitin ang Exit menu.", L"Paalala", MB_ICONINFORMATION);
 }
 
-//
-void OnItemChanged(HWND hWnd, LPARAM lParam)
-{
-    HWND hList = ((LPNMHDR)lParam)->hwndFrom;
-    LPNMLISTVIEW pnmv = (LPNMLISTVIEW)lParam;
-
-    UINT uEnabled = (pnmv->uNewState == (LVIS_FOCUSED | LVIS_SELECTED)) ? MF_ENABLED : MF_DISABLED;
-
-    HMENU hMenu = GetMenu(hWnd);
-    EnableMenuItem(hMenu, IDM_CLOSE, uEnabled);
-}
-
-//
-void OnSetFocus(HWND hWnd, LPARAM lParam)
-{
-    HMENU hMenu = GetMenu(hWnd);
-    EnableMenuItem(hMenu, IDM_CLOSE, MF_DISABLED);
-}
-
-//
-void OnKillFocus(HWND hWnd, LPARAM lParam)
-{
-    HMENU hMenu = GetMenu(hWnd);
-    EnableMenuItem(hMenu, IDM_CLOSE, MF_DISABLED);
-}
-
-//
 void OnServerRun(HWND hWnd)
 {
     server.Run(hWnd);
 }
 
-//
 void OnServerShutdown(HWND hWnd)
 {
     server.Shutdown();
 }
 
-//
 void OnServerExit(HWND hWnd)
 {
     DestroyWindow(hWnd);
 }
 
-//
 void OnClientClose(HWND hWnd)
 {
     LV_ITEM lvi;
