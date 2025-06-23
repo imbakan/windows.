@@ -2,7 +2,6 @@
 #include "framework.h"
 #include "server.h"
 
-// constructor
 CServer::CServer(const char* port)
 {
 	strcpy_s(this->port, MAX_PORT_STRING, port);
@@ -11,13 +10,11 @@ CServer::CServer(const char* port)
 	serversocket = INVALID_SOCKET;
 }
 
-// destructor
 CServer::~CServer()
 {
 	if (thread != NULL) CloseHandle(thread);
 }
 
-//
 void CServer::Run(HWND hWnd)
 {
 	DWORD id;
@@ -29,7 +26,6 @@ void CServer::Run(HWND hWnd)
 	thread = CreateThread(NULL, 0, Function, this, 0, &id);
 }
 
-//
 void CServer::Shutdown()
 {
 	int errcode = closesocket(serversocket);
@@ -38,7 +34,6 @@ void CServer::Shutdown()
 		SendMessage(hWnd, WM_LOG_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
 }
 
-// 
 DWORD WINAPI CServer::Function(LPVOID lpParam)
 {
 	CServer* p = (CServer*)lpParam;
