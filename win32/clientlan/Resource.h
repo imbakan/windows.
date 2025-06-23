@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by clientlan.rc
+// Used by client_lan.rc
 
 #define IDS_APP_TITLE			103
 
@@ -22,6 +22,8 @@
 
 #define IDM_DOWNLOAD			131
 
+#define IDM_EMERGENCY_EXIT		141
+
 #define IDI_ICON_1				151
 #define IDI_ICON_2				152
 #define IDI_ICON_3				153
@@ -36,6 +38,7 @@
 #define IDC_EDIT4				1004
 #define IDC_TREE1				1005
 #define IDC_LIST1				1006
+#define IDC_LIST2				1007
 
 #define IDC_MYICON				2
 #ifndef IDC_STATIC
