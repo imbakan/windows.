@@ -1,25 +1,26 @@
 
-// client-server model
-// client side
-// LAN, WiFi
-
 #include "framework.h"
-#include "clientlan.h"
+#include "client_lan.h"
 #include "connectdialog.h"
 #include "client.h"
-#include "stack.h"
 
-#define DEFAULT_IP     "192.168.0.0"
-#define DEFAULT_PORT    "27015"
+#define DEFAULT_IP     "192.168.1.5"
+#define DEFAULT_PORT         "54105"
 
 const int MAX_LOADSTRING = 100;
+
 const int PADDING = 2;
 const int SPLITTER = 6;
 const int FONT_HEIGHT = 23;
 
-HINSTANCE hInst;
-WCHAR szTitle[MAX_LOADSTRING];
-WCHAR szWindowClass[MAX_LOADSTRING];
+// Global Variables:
+HINSTANCE hInst;                                // current instance
+WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
+WCHAR szWindowClass[MAX_LOADSTRING];            // main window class name
+
+WSADATA wsadata;
+CConnectDialog dlg1(DEFAULT_IP);
+CClient client(DEFAULT_PORT);
 
 RECT rect1;
 bool dragging1;
@@ -30,21 +31,13 @@ bool dragging2;
 HIMAGELIST himl;
 HWND hEdit1, hEdit2, hEdit3, hTree1, hList1;
 
-WSADATA wsadata;
-CConnectDialog dlg1(DEFAULT_IP);
-CClient client(DEFAULT_PORT);
-
-LRESULT CALLBACK    WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+// Forward declarations of functions included in this code module:
+LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	DlgProc1(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
-void OutputBuffer(const char* txt, char* buffer, int count);
-void OutputBuffer(const char* txt, int value);
-void OutputBuffer(const char* txt, long long value);
-
-void ReleaseTreeView(HWND hTree, HTREEITEM hItem);
-void ReleaseTreeViewChildren(HWND hTree, HTREEITEM hItem);
-
-HTREEITEM TreeView_GetHierarchicalItem(CStack* stack, HWND hTree, HTREEITEM hItem);
+void TreeView_Release(HWND hTree, HTREEITEM hItem);
+void TreeView_Traversal(HWND hTree, HTREEITEM hItem);
+void TreeView_Clear(HWND hTree);
 
 void OnLogMessage(HWND hWnd, WPARAM wParam, LPARAM lParam);
 void OnConnecting(HWND hWnd, WPARAM wParam, LPARAM lParam);
@@ -73,18 +66,20 @@ void OnClientConnect(HWND hWnd);
 void OnClientDisonnect(HWND hWnd);
 void OnClientExit(HWND hWnd);
 
-void OnToolsDownload(HWND hWnd);
+void OnFileDownload(HWND hWnd);
 
-// main program
+void OnToolsEmergencyExit(HWND hWnd);
+
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
 {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
+    // Initialize global strings.
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_CLIENTLAN, szWindowClass, MAX_LOADSTRING);
 
-    // iregister ang window class
+    // Registers the window class.
     WNDCLASSEXW wcex;
 
     wcex.cbSize = sizeof(WNDCLASSEX);
@@ -103,11 +98,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
     RegisterClassExW(&wcex);
 
+    // Store instance handle in our global variable.
     hInst = hInstance;
 
-    // gumawa ng window
+    // Creates main window.
     int X, Y, nWidth, nHeight, Cx, Cy;
 
+    // 1080p: 1920 x 1080
+    //  720p: 1280 x  720
     //  480p:  854 x  480
 
     Cx = 854;
@@ -117,26 +115,22 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
     nHeight = Cy + 59;
 
     X = (GetSystemMetrics(SM_CXSCREEN) - nWidth) / 2;
-    Y = (GetSystemMetrics(SM_CYSCREEN) - nHeight) / 3;
+    Y = (GetSystemMetrics(SM_CYSCREEN) - nHeight) / 4;
 
     HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-        X, Y,
-        nWidth, nHeight,
-        nullptr, nullptr, hInstance, nullptr);
+        X, Y, nWidth, nHeight, nullptr, nullptr, hInstance, nullptr);
 
-    // kapag may error, wag irun
     if (!hWnd)
         return FALSE;
 
-    // idisplay ang window
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_CLIENTLAN));
 
-    // message loop
     MSG msg;
 
+    // main message loop
     while (GetMessage(&msg, nullptr, 0, 0))
     {
         if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
@@ -149,7 +143,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
     return (int)msg.wParam;
 }
 
-// window callback function
+// Processes messages for the main window.
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
@@ -194,11 +188,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         break;
 
-    case WM_LBUTTONDOWN:OnLButtonDown(hWnd, LOWORD(lParam), HIWORD(lParam));	break;
-    case WM_LBUTTONUP:	OnLButtonUp(hWnd, LOWORD(lParam), HIWORD(lParam));      break;
-    case WM_MOUSEMOVE:	OnMouseMove(hWnd, LOWORD(lParam), HIWORD(lParam));      break;
-    case WM_SIZE:       OnSize(hWnd, LOWORD(lParam), HIWORD(lParam));           break;
-
     case WM_COMMAND:
 
         switch (LOWORD(wParam))
@@ -206,203 +195,77 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case IDM_CONNECT:           OnClientConnect(hWnd);	        break;
         case IDM_DISCONNECT:        OnClientDisonnect(hWnd);        break;
         case IDM_EXIT:		        OnClientExit(hWnd);             break;
-        case IDM_DOWNLOAD:          OnToolsDownload(hWnd);          break;
+        case IDM_DOWNLOAD:          OnFileDownload(hWnd);           break;
+        case IDM_EMERGENCY_EXIT:    OnToolsEmergencyExit(hWnd);     break;
         default:
             return DefWindowProc(hWnd, message, wParam, lParam);
         }
         break;
 
-    case WM_PAINT:      OnPaint(hWnd);								break;
-    case WM_CREATE:     OnCreate(hWnd);								break;
-    case WM_DESTROY:    OnDestroy(hWnd);							break;
-    case WM_CLOSE:      OnClose(hWnd);								break;
-
+    case WM_LBUTTONDOWN:    OnLButtonDown(hWnd, LOWORD(lParam), HIWORD(lParam));	break;
+    case WM_LBUTTONUP:	    OnLButtonUp(hWnd, LOWORD(lParam), HIWORD(lParam));      break;
+    case WM_MOUSEMOVE:	    OnMouseMove(hWnd, LOWORD(lParam), HIWORD(lParam));      break;
+    case WM_SIZE:           OnSize(hWnd, LOWORD(lParam), HIWORD(lParam));    break;
+    case WM_PAINT:          OnPaint(hWnd);                                              break;
+    case WM_CREATE:         OnCreate(hWnd);                                             break;
+    case WM_DESTROY:        OnDestroy(hWnd);                                            break;
+    case WM_CLOSE:          OnClose(hWnd);								                break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
     return 0;
 }
 
-//
 INT_PTR CALLBACK DlgProc1(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     return dlg1.Proc(hWnd, message, wParam, lParam);
 }
 
-//
-void OutputBuffer(const char* txt, char* buffer, int count)
+// irelease ang member lParam ng Node hItem
+void TreeView_Release(HWND hTree, HTREEITEM hItem)
 {
-    int i;
-    char str[10];
-
-    OutputDebugStringA(txt);
-
-    for (i = 0; i < count; i++) {
-
-        sprintf_s(str, 10, " %02x", (unsigned char)buffer[i]);
-        OutputDebugStringA(str);
-    }
-
-    OutputDebugStringA("\n");
-}
-
-//
-void OutputBuffer(const char* txt, int value)
-{
-    const int n = sizeof(int);
-    int* p;
-    int i;
-    char buffer[n];
-    char str[10];
-
-    p = (int*)buffer;
-    *p = value;
-
-    OutputDebugStringA(txt);
-
-    for (i = 0; i < n; i++) {
-
-        sprintf_s(str, 10, " %02x", (unsigned char)buffer[i]);
-        OutputDebugStringA(str);
-    }
-
-    OutputDebugStringA("\n");
-}
-
-//
-void OutputBuffer(const char* txt, long long value)
-{
-    const int n = sizeof(long long);
-    long long* p;
-    int i;
-    char buffer[n];
-    char str[10];
-
-    p = (long long*)buffer;
-    *p = value;
-
-    OutputDebugStringA(txt);
-
-    for (i = 0; i < n; i++) {
-
-        sprintf_s(str, 10, " %02x", (unsigned char)buffer[i]);
-        OutputDebugStringA(str);
-    }
-
-    OutputDebugStringA("\n");
-}
-
-// irelease ang mga allocated memory na nasa bawat node ng tree view control
-void ReleaseTreeView(HWND hTree, HTREEITEM hItem)
-{
-    HTREEITEM hItem1, hItem2;
     TV_ITEM tvi;
-    wchar_t str1[MAX_PATH], str2[MAX_PATH];
     TREE_VIEW_DATA* data;
-    long long value;
 
-    hItem1 = hItem;
+    ZeroMemory(&tvi, sizeof(TV_ITEM));
 
-    wcscpy_s(str1, MAX_PATH, L"????@****");
+    tvi.mask = TVIF_HANDLE | TVIF_PARAM;
+    tvi.hItem = hItem;
 
-    while (hItem1 != NULL) {
+    TreeView_GetItem(hTree1, &tvi);
 
-        // release memory
-        ZeroMemory(&tvi, sizeof(TV_ITEM));
+    data = (TREE_VIEW_DATA*)tvi.lParam;
 
-        tvi.mask = TVIF_HANDLE | TVIF_TEXT | TVIF_PARAM;
-        tvi.hItem = hItem1;
-        tvi.pszText = str2;
-        tvi.cchTextMax = MAX_PATH;
-
-        TreeView_GetItem(hTree, &tvi);
-
-        data = (TREE_VIEW_DATA*)tvi.lParam;
-        value = data->value;
-
-        delete data;
-
-        // huling sibling
-        if (wcscmp(str1, str2) == 0) break;
-
-        // ibrowse ang mga child
-        hItem2 = TreeView_GetChild(hTree, hItem1);
-
-        // iterate
-        if (hItem2 != NULL) ReleaseTreeView(hTree, hItem2);
-
-        // pagpalitin
-        wcscpy_s(str1, MAX_PATH, str2);
-
-        // kunin ang susunod na child
-        hItem1 = TreeView_GetNextSibling(hTree, hItem1);
-    }
+    delete data;
 }
 
-// irelease ang mga allocated memory na nasa bawat node ng tree view control
-void ReleaseTreeViewChildren(HWND hTree, HTREEITEM hItem)
+// irelease ang bawat node ng tree view control
+void TreeView_Traversal(HWND hTree, HTREEITEM hItem)
 {
-    HTREEITEM hNext, hChild;
-    TREE_VIEW_DATA* data;
-    TV_ITEM tvi;
+    HTREEITEM hSibling, hChild;
+    
+    hSibling = hItem;
 
-    // kunin ang unang child ng parent hItem
-    hNext = TreeView_GetChild(hTree, hItem);
+    while (hSibling != NULL) {
 
-    while (hNext != NULL) {
+        TreeView_Release(hTree, hSibling);
 
-        // irelease ang memory na nasa node na 'to
-        tvi.mask = TVIF_HANDLE | TVIF_PARAM;
-        tvi.hItem = hNext;
+        hChild = TreeView_GetChild(hTree, hSibling);
+        TreeView_Traversal(hTree, hChild);
 
-        TreeView_GetItem(hTree, &tvi);
-
-        data = (TREE_VIEW_DATA*)tvi.lParam;
-
-        delete data;
-
-        // alamin kung may child ang parent na 'to
-        // kung meron ireleale ang mag ito
-        hChild = TreeView_GetChild(hTree, hNext);
-
-        if (hChild != NULL)
-            ReleaseTreeViewChildren(hTree, hNext);
-
-        // kunin ang susunod na child
-        hNext = TreeView_GetNextSibling(hTree, hNext);
+        hSibling = TreeView_GetNextSibling(hTree, hSibling);
     }
 }
 
-// kunin ang pathname stack ng node hItem
-HTREEITEM TreeView_GetHierarchicalItem(CStack* stack, HWND hTree, HTREEITEM hItem)
+// irelease ang lahat ng node ng tree view control
+void TreeView_Clear(HWND hTree)
 {
-    HTREEITEM hPrevItem;
-    TV_ITEM tvi;
-    wchar_t str[MAX_PATH];
+    HTREEITEM hItem;
 
-    hPrevItem = hItem;
-
-    // ang order ng pagkuha ng mga item ay mula sa child papuntang parent
-    while (hPrevItem != NULL)
-    {
-        // kunin ang pangalan ng item
-        tvi.mask = TVIF_HANDLE | TVIF_TEXT;
-        tvi.hItem = hPrevItem;
-        tvi.pszText = str;
-        tvi.cchTextMax = MAX_PATH;
-
-        TreeView_GetItem(hTree, &tvi);
-
-        stack->Push(str);
-
-        // kunin ang susunod na parent item
-        hPrevItem = TreeView_GetParent(hTree, hPrevItem);
-    }
-
-    return hItem;
+    hItem = TreeView_GetRoot(hTree1);
+    TreeView_Traversal(hTree1, hItem);
 }
 
-//
 void OnLogMessage(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
     wchar_t* str2 = (wchar_t*)lParam;
@@ -439,7 +302,6 @@ void OnLogMessage(HWND hWnd, WPARAM wParam, LPARAM lParam)
     SendMessage(hEdit3, EM_SCROLLCARET, 0, 0);
 }
 
-//
 void OnConnecting(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
     wchar_t str[MAX_LOADSTRING];
@@ -453,7 +315,6 @@ void OnConnecting(HWND hWnd, WPARAM wParam, LPARAM lParam)
     EnableMenuItem(hMenu, IDM_EXIT, MF_DISABLED);
 }
 
-//
 void OnRunning(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
     wchar_t str[MAX_LOADSTRING];
@@ -467,7 +328,6 @@ void OnRunning(HWND hWnd, WPARAM wParam, LPARAM lParam)
     EnableMenuItem(hMenu, IDM_EXIT, MF_DISABLED);
 }
 
-//
 void OnShuttingDown(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
     wchar_t str[MAX_LOADSTRING];
@@ -480,47 +340,41 @@ void OnShuttingDown(HWND hWnd, WPARAM wParam, LPARAM lParam)
     EnableMenuItem(hMenu, IDM_DISCONNECT, MF_DISABLED);
     EnableMenuItem(hMenu, IDM_EXIT, MF_ENABLED);
 
+    TreeView_Clear(hTree1);
+
     TreeView_DeleteAllItems(hTree1);
     ListView_DeleteAllItems(hList1);
     SetWindowText(hEdit1, L"");
     SetWindowText(hEdit2, L"");
-
-    swprintf_s(str, MAX_LOADSTRING, L"The client thread 0x%llx has exited.", client.GetId());
-    SendMessage(hWnd, WM_LOG_MESSAGE, 0, (LPARAM)str);
-
 }
 
-//
 void OnListViewSetFocus(HWND hWnd, LPARAM lParam)
 {
-    HWND hList = ((LPNMHDR)lParam)->hwndFrom;
+    /*HWND hList = ((LPNMHDR)lParam)->hwndFrom;
     UINT enable = ListView_GetNextItem(hList, -1, LVNI_SELECTED) == -1 ? MF_DISABLED : MF_ENABLED;
 
     HMENU hMenu = GetMenu(hWnd);
-    EnableMenuItem(hMenu, IDM_DOWNLOAD, MF_BYCOMMAND | enable);
+    EnableMenuItem(hMenu, IDM_DOWNLOAD, MF_BYCOMMAND | enable);*/
 }
 
-//
 void OnListViewKillFocus(HWND hWnd, LPARAM lParam)
 {
-    HMENU hMenu = GetMenu(hWnd);
-    EnableMenuItem(hMenu, IDM_DOWNLOAD, MF_BYCOMMAND | MF_DISABLED);
+    /*HMENU hMenu = GetMenu(hWnd);
+    EnableMenuItem(hMenu, IDM_DOWNLOAD, MF_BYCOMMAND | MF_DISABLED);*/
 }
 
-//
 void OnListViewItemChanged(HWND hWnd, LPARAM lParam)
 {
-    HWND hList = ((LPNMHDR)lParam)->hwndFrom;
+    /*HWND hList = ((LPNMHDR)lParam)->hwndFrom;
     UINT enable = ListView_GetNextItem(hList, -1, LVNI_SELECTED) == -1 ? MF_DISABLED : MF_ENABLED;
 
     HMENU hMenu = GetMenu(hWnd);
-    EnableMenuItem(hMenu, IDM_DOWNLOAD, MF_BYCOMMAND | enable);
+    EnableMenuItem(hMenu, IDM_DOWNLOAD, MF_BYCOMMAND | enable);*/
 }
 
-//
 void OnItemExpanding(HWND hWnd, LPARAM lParam)
 {
-    HWND hTree = ((LPNMHDR)lParam)->hwndFrom;
+    /*HWND hTree = ((LPNMHDR)lParam)->hwndFrom;
     LPNM_TREEVIEW lpnmtv = (LPNM_TREEVIEW)lParam;
     HTREEITEM hItem = lpnmtv->itemNew.hItem;
     TV_ITEM tvi;
@@ -638,24 +492,22 @@ void OnItemExpanding(HWND hWnd, LPARAM lParam)
 
         // irelease ang mga child node nito
         ReleaseTreeViewChildren(hTree, hItem);
-    }
+    }*/
 }
 
-//
 void OnItemExpanded(LPARAM lParam)
 {
-    HWND hTree = ((LPNMHDR)lParam)->hwndFrom;
+    /*HWND hTree = ((LPNMHDR)lParam)->hwndFrom;
     LPNM_TREEVIEW lpnmtv = (LPNM_TREEVIEW)lParam;
     TV_ITEM tvi = lpnmtv->itemNew;
 
     if (lpnmtv->action == TVE_COLLAPSE)
-        TreeView_Expand(hTree, tvi.hItem, TVE_COLLAPSE | TVE_COLLAPSERESET);
+        TreeView_Expand(hTree, tvi.hItem, TVE_COLLAPSE | TVE_COLLAPSERESET);*/
 }
 
-//
 void OnSelChanged(HWND hWnd, LPARAM lParam)
 {
-    HWND hTree = ((LPNMHDR)lParam)->hwndFrom;
+    /*HWND hTree = ((LPNMHDR)lParam)->hwndFrom;
     LPNM_TREEVIEW lpnmtv = (LPNM_TREEVIEW)lParam;
     HTREEITEM hItem = lpnmtv->itemNew.hItem;
     TV_ITEM tvi;
@@ -727,10 +579,9 @@ void OnSelChanged(HWND hWnd, LPARAM lParam)
 
         client.Send(CClient::REQUEST_FILE);
         client.Send(client.GetId());
-    }
+    }*/
 }
 
-//
 void OnLButtonDown(HWND hWnd, int x, int y)
 {
     if (rect1.left < x && x < rect1.right && rect1.top < y && y < rect1.bottom) {
@@ -745,7 +596,6 @@ void OnLButtonDown(HWND hWnd, int x, int y)
     }
 }
 
-//
 void OnLButtonUp(HWND hWnd, int x, int y)
 {
     dragging1 = false;
@@ -753,7 +603,6 @@ void OnLButtonUp(HWND hWnd, int x, int y)
     ReleaseCapture();
 }
 
-//
 void OnMouseMove(HWND hWnd, int x, int y)
 {
     RECT cr;
@@ -888,7 +737,6 @@ void OnSize(HWND hWnd, int width, int height)
     MoveWindow(hList1, x2, y2, width3, height2, FALSE);
 }
 
-//
 void OnPaint(HWND hWnd)
 {
     PAINTSTRUCT ps;
@@ -898,7 +746,6 @@ void OnPaint(HWND hWnd)
     EndPaint(hWnd, &ps);
 }
 
-//
 void OnCreate(HWND hWnd)
 {
     wchar_t str[MAX_LOADSTRING];
@@ -1024,108 +871,48 @@ void OnCreate(HWND hWnd)
         OutputDebugString(GetErrorMessage(WSAGetLastError()));
 }
 
-// irelease lahat bago mag-exit
 void OnDestroy(HWND hWnd)
 {
-    HTREEITEM hItem;
-
-    hItem = TreeView_GetRoot(hTree1);
-    ReleaseTreeView(hTree1, hItem);
-
     ImageList_Destroy(himl);
     WSACleanup();
     PostQuitMessage(0);
 }
 
-//
 void OnClose(HWND hWnd)
 {
     MessageBox(hWnd, L"Gamitin ang Exit menu.", L"Paalala", MB_ICONINFORMATION);
 }
 
-//
 void OnClientConnect(HWND hWnd)
 {
     char* ip = dlg1.Show(hWnd, hInst, DlgProc1);
     if (ip == NULL) return;
 
-    wchar_t name[MAX_LOADSTRING];
-    DWORD size = sizeof(name);
-    GetComputerName(name, &size);
+    wchar_t str[MAX_LOADSTRING];
+    DWORD n = sizeof(str);
+    GetComputerName(str, &n);
 
-    client.Run(hWnd, hTree1, hList1, hEdit2, ip, name);
+    //wcscpy_s(str, MAX_LOADSTRING, L"Gateway");
+
+    client.Run(hWnd, hTree1, hList1, hEdit2, ip, str);
 }
 
-//
 void OnClientDisonnect(HWND hWnd)
 {
     client.Shutdown();
 }
 
-//
 void OnClientExit(HWND hWnd)
 {
     DestroyWindow(hWnd);
 }
 
-//
-void OnToolsDownload(HWND hWnd)
+void OnFileDownload(HWND hWnd)
 {
-    HTREEITEM hItem;
-    TV_ITEM tvi;
-    TREE_VIEW_DATA* data;
-    CStack stack;
-    long long count, size;
-    int i;
-    wchar_t str1[MAX_PATH];
-    wchar_t* str;
+ 
+}
 
-    // kunin ang file name
-    i = ListView_GetNextItem(hList1, -1, LVNI_SELECTED);
-    ListView_GetItemText(hList1, i, 0, str1, MAX_PATH);
-    stack.Push(str1);
-
-    hItem = TreeView_GetSelection(hTree1);
-
-    // kunin ang id number ng destination client
-    ZeroMemory(&tvi, sizeof(TV_ITEM));
-
-    tvi.mask = TVIF_HANDLE | TVIF_PARAM;
-    tvi.hItem = hItem;
-
-    TreeView_GetItem(hTree1, &tvi);
-
-    data = (TREE_VIEW_DATA*)tvi.lParam;
-
-    // kunin ang path name
-    TreeView_GetHierarchicalItem(&stack, hTree1, hItem);
-    stack.Pop(str1, MAX_PATH);
-
-    // kompyutin ang size na isesend sa destination client
-    count = 0LL;
-    stack.Reset();
-    while (!stack.IsEnd()) {
-        stack.Read(&str);
-        count += wcslen(str);
-    }
-
-    size = 2LL * stack.GetCount() * sizeof(int) + count * sizeof(wchar_t) + sizeof(int) + sizeof(long long);
-
-    // isend ang mga ito sa server
-    // ang data->value ay id number ng destination client
-    // ang client.GetId() ay id number ng source client
-    client.Send(CClient::FORWARD);
-    client.Send(data->value);
-    client.Send(size);
-
-    while (!stack.IsEmpty()) {
-
-        stack.Pop(str1, MAX_PATH);
-
-        client.Send(CClient::STRINGS);
-        client.Send(str1);
-    }
-
-    client.Send(CClient::REQUEST_CONTENT);
-    client.Send(client.GetId());
+void OnToolsEmergencyExit(HWND hWnd)
+{
+    DestroyWindow(hWnd);
 }
