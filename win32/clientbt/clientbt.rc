@@ -51,9 +51,13 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "Exit",            IDM_EXIT
     END
-    POPUP "&Tools"
+    POPUP "&File"
     BEGIN
         MENUITEM "Download",        IDM_DOWNLOAD
+    END
+    POPUP "&Tools"
+    BEGIN
+        MENUITEM "Emergency Exit",  IDM_EMERGENCY_EXIT
     END
 END
 
