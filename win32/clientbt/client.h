@@ -1,6 +1,5 @@
 
 #include "queue_i.h"
-#include "queue_s.h"
 #include "queue_a.h"
 
 #pragma once
@@ -18,103 +17,80 @@ private:
 
     static const int MAX_ADDRESS_SIZE = 20;
     static const int MAX_NAME_STRING = 100;
-
     static const int BUFFER_SIZE = 32768;
 
-    static const int NEED_DATA = 3101;
-    static const int SET_ORDER = 3102;
-    static const int GET_INTEGER = 3103;
-    static const int GET_LONGLONG = 3104;
-    static const int GET_STRING = 3105;
+    static const int NEED_DATA = 3001;
+    static const int SET_ORDER = 3002;
+    static const int GET_INTEGER = 3003;
+    static const int GET_LONGLONG = 3004;
+    static const int GET_STRING = 3005;
 
-    static const int ATTRIBUTES = 3201;
-    //static const int STRINGS = 3202;
-    static const int COLLECT_STRING = 3203;
-    static const int COLLECT_ATTRIBUTE = 3204;
+    static const int ATTRIBUTES = 4001;
+    static const int STRINGS = 4002;
+    static const int COLLECT_STRING = 4003;
+    static const int COLLECT_ATTRIBUTE = 4004;
 
-    static const int JOIN = 3301;
-    static const int LEAVE = 3302;
-    static const int CLIENT_RUNNING = 3303;
-    static const int CONFIRM = 3304;
-    static const int ID_RECEIVED = 3305;
-    static const int RUN_ONCE = 3306;
-    //static const int FORWARD            = 3307;
+    static const int FIRST_RUN = 5001;
+    static const int CONNECTED = 5002;
+    static const int JOIN = 5003;
+    static const int LEAVE = 5004;
+    static const int FORWARD = 5005;
+    static const int RESEND = 5006;
+    static const int RUNNING = 5007;
 
-    static const int REPLY_DEVICE = 3401;
-    static const int REPLY_DEVICES = 3402;
-    static const int REPLY_DRIVE = 3403;
-    static const int REPLY_DIRECTORY = 3404;
-    static const int REPLY_FILE = 3405;
+    static const int REQUEST_DRIVE = 6001;
+    static const int REQUEST_DIRECTORY = 6002;
+    static const int REQUEST_FILE = 6003;
+    static const int REQUEST_CONTENT = 6004;
 
-    //static const int REQUEST_DRIVE      = 3501;
-    //static const int REQUEST_DIRECTORY = 3502;
-    //static const int REQUEST_FILE = 3503;
-    //static const int REQUEST_CONTENT = 3504;
+    static const int REPLY_DEVICE = 7001;
+    static const int REPLY_DRIVE = 7002;
+    static const int REPLY_DIRECTORY = 7003;
+    static const int REPLY_FILE = 7004;
+    static const int REPLY_CONTENT_1 = 7005;
+    static const int REPLY_CONTENT_2 = 7006;
+    static const int REPLY_CONTENT_3 = 7007;
 
-    static const int DEPOPULATE_BY_DEVICE = 3601;
-    static const int POPULATE_WITH_DEVICE = 3602;
-    static const int POPULATE_WITH_DEVICES = 3603;
-    static const int POPULATE_WITH_DRIVES = 3604;
-    static const int POPULATE_WITH_DIRECTORIES = 3605;
-    static const int POPULATE_WITH_FILES = 3606;
+    static const int ENUMERATE_DRIVE = 8001;
+    static const int ENUMERATE_DIRECTORY = 8002;
+    static const int ENUMERATE_FILES = 8003;
+    static const int ENUMERATE_CONTENTS = 8004;
 
-    static const int ENUMERATE_DRIVES = 3701;
-    static const int ENUMERATE_DIRECTORIES = 3702;
-    static const int ENUMERATE_FILES = 3703;
-    static const int ENUMERATE_CONTENTS = 3704;
+    static const int DEPOPULATE_BY_DEVICE = 9001;
+    static const int POPULATE_WITH_DEVICE = 9002;
+    static const int POPULATE_WITH_DRIVE = 9003;
+    static const int POPULATE_WITH_DIRECTORY = 9004;
+    static const int POPULATE_WITH_FILE = 9005;
+    static const int POPULATE_WITH_CONTENT_1 = 9006;
+    static const int POPULATE_WITH_CONTENT_2 = 9007;
+    static const int POPULATE_WITH_CONTENT_3 = 9008;
 
-    HANDLE thread1;
+    HANDLE thread;
     HWND hWnd, hTree, hList, hEdit;
-    HTREEITEM hItem;
-
-    int drive_count;
-    long long my_id;
-    wchar_t my_name[MAX_NAME_STRING], ** drive_letter, ** drive_name, address[MAX_ADDRESS_SIZE];
     SOCKET socket;
+    long long id;
+    wchar_t name[MAX_NAME_STRING], address[MAX_ADDRESS_SIZE];
 
-    void OutputBuffer(const char* txt, char* buffer, int count);
-
-    void FormatWithCommas(wchar_t* str, int size, unsigned __int64 num);
-    void GetDrives(wchar_t*** letter, wchar_t*** name, int* count);
-
-    void OnNeedData(char* buffer, int* index, int* buffer_size, bool* needdata, CQueue_i* order, int* next);
     void OnSetOrder(bool* needdata, CQueue_i* order, int* next, int cmd);
+    void OnNeedData(char* buffer, int* index, int* buffer_size, bool* needdata, CQueue_i* order, int* next);
     void OnGetInteger(char* buffer, int* index, CQueue_i* order, int* next, int* value);
     void OnGetLongLong(char* buffer, int* index, CQueue_i* order, int* next, long long* value);
     void OnGetString(char* buffer, int* index, CQueue_i* order, int* next, int len, wchar_t** str);
 
-    void OnCollectString(CQueue_i* order, int* next, CQueue_s* que, wchar_t* str);
     void OnCollectAttribute(CQueue_i* order, int* next, CQueue_a* que, wchar_t* str, long long value);
 
-    void OnRunOnce(CQueue_i* order, int* next);
-    void OnIdReceived(CQueue_i* order, int* next, long long value);
+    void OnFirstRun(CQueue_i* order, int* next);
+    void OnConnected(CQueue_i* order, int* next, long long value);
 
     void OnDepopulateByDevice(CQueue_i* order, int* next, long long value);
-    void OnPopulateWithDevice(CQueue_i* order, int* next, wchar_t* str, long long value);
-    void OnPopulateWithDevices(CQueue_i* order, int* next, CQueue_a* que);
+    void OnPopulateWithDevice(CQueue_i* order, int* next, CQueue_a* que);
 
-    void OnPopulateNode(CQueue_i* order, int* next, CQueue_s* que, int image, int selectedimage);
-    void OnPopulateWithFiles(CQueue_i* order, int* next, CQueue_s* que);
-
-    void OnEnumerateDrives(CQueue_i* order, int* next, long long value);
-    void OnEnumerateDirectories(CQueue_i* order, int* next, CQueue_s* que, long long value);
-    void OnEnumerateFiles(CQueue_i* order, int* next, CQueue_s* que, long long value);
-    void OnEnumerateContents(CQueue_i* order, int* next, CQueue_s* que, long long value);
-
-    static DWORD WINAPI Function1(LPVOID lpParam);
+    static DWORD WINAPI Function(LPVOID lpParam);
 
 public:
-    static const int STRINGS = 3202;
-    static const int FORWARD = 3307;
-    static const int REQUEST_DRIVE = 3501;
-    static const int REQUEST_DIRECTORY = 3502;
-    static const int REQUEST_FILE = 3503;
-    static const int REQUEST_CONTENT = 3504;
 
     CClient();
     ~CClient();
-
-    void SetHandle(HTREEITEM hItem);
 
     void Run(HWND hWnd, HWND hTree, HWND hList, HWND hEdit, wchar_t* address, wchar_t* name);
     void Shutdown();
@@ -123,7 +99,5 @@ public:
     void Send(long long value);
     void Send(wchar_t* str);
 
-    wchar_t* GetName();
-    long long GetId();
 };
 
