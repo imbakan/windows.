@@ -9,6 +9,7 @@ CConnectDialog::CConnectDialog()
 
 CConnectDialog::~CConnectDialog()
 {
+
 }
 
 void CConnectDialog::GetBluetoothDevices(CQueue_s* que)
@@ -28,7 +29,6 @@ void CConnectDialog::GetBluetoothDevices(CQueue_s* que)
 	queryset = (PWSAQUERYSET)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size);
 	if (queryset == NULL) return;
 
-	//
 	ZeroMemory(queryset, size);
 	queryset->dwNameSpace = NS_BTH;
 	queryset->dwSize = sizeof(WSAQUERYSET);
@@ -103,7 +103,6 @@ void CConnectDialog::OnInitDialog(HWND hWnd)
 	int x, y;
 	CQueue_s que;
 
-	// icenter ang dialog window
 	hwnd = GetParent(hWnd);
 	GetWindowRect(hwnd, &rect1);
 	GetWindowRect(hWnd, &rect2);
@@ -201,6 +200,7 @@ void CConnectDialog::OnOk(HWND hWnd, WPARAM wParam)
 void CConnectDialog::OnCancel(HWND hWnd, WPARAM wParam)
 {
 	p = NULL;
+
 	EndDialog(hWnd, LOWORD(wParam));
 }
 
