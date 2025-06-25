@@ -2,14 +2,12 @@
 #include "framework.h"
 #include "queue_i.h"
 
-//
 CQueue_i::CQueue_i()
 {
 	First = Last = NULL;
 	Count = 0;
 }
 
-//
 CQueue_i::~CQueue_i()
 {
 	int value;
@@ -18,13 +16,11 @@ CQueue_i::~CQueue_i()
 		Remove(&value);
 }
 
-//
 int CQueue_i::GetCount()
 {
 	return Count;
 }
 
-//
 bool CQueue_i::IsEmpty()
 {
 	return (Count == 0);
@@ -56,14 +52,14 @@ void CQueue_i::Add(int value)
 	Count++;
 }
 
-//               return
+//                push
 //         ----------------->
 //      Node                First                                            Last
 //     +----+              +----+    +----+    +----+    +----+    +----+    +----+
 //     |    |--->          |    |--->|    |--->|    |--->|    |--->|    |--->|    |---> NULL
 //     +----+              +----+    +----+    +----+    +----+    +----+    +----+
 //
-void CQueue_i::Return(int value)
+void CQueue_i::Push(int value)
 {
 	NODE_I* Node;
 
