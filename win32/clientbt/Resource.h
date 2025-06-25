@@ -14,13 +14,14 @@
 #define IDC_CLIENTBT			109
 
 #define IDD_DIALOG1				110
-#define IDD_DIALOG2				120
 
 #define IDM_CONNECT				111
 #define IDM_DISCONNECT			112
 #define IDM_CLOSE				121
 
 #define IDM_DOWNLOAD			131
+
+#define IDM_EMERGENCY_EXIT		141
 
 #define IDI_ICON_1				151
 #define IDI_ICON_2				152
@@ -33,10 +34,9 @@
 #define IDC_EDIT1				1001
 #define IDC_EDIT2				1002
 #define IDC_EDIT3				1003
-#define IDC_EDIT4				1004
-#define IDC_TREE1				1005
-#define IDC_LIST1				1006
-#define IDC_LIST2				1007
+#define IDC_TREE1				1004
+#define IDC_LIST1				1005
+#define IDC_LIST2				1006
 
 #define IDC_MYICON				2
 #ifndef IDC_STATIC
