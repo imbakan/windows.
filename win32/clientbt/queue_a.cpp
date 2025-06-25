@@ -2,14 +2,12 @@
 #include "framework.h"
 #include "queue_a.h"
 
-// constructor
 CQueue_a::CQueue_a()
 {
 	First = Last = NULL;
 	Count = 0;
 }
 
-// destructor
 CQueue_a::~CQueue_a()
 {
 	wchar_t str[100];
@@ -19,13 +17,11 @@ CQueue_a::~CQueue_a()
 		Remove(str, 100, &value);
 }
 
-//
 int CQueue_a::GetCount()
 {
 	return Count;
 }
 
-//
 bool CQueue_a::IsEmpty()
 {
 	return (Count == 0);
