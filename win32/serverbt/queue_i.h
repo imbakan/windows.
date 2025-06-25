@@ -22,6 +22,6 @@ public:
 	int GetCount();
 	bool IsEmpty();
 	void Add(int value);
-	void Return(int value);
+	void Push(int value);
 	void Remove(int* value);
 };
