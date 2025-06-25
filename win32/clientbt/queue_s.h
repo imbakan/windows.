@@ -23,7 +23,4 @@ public:
 	bool IsEmpty();
 	void Add(wchar_t* str);
 	void Remove(wchar_t* str, size_t n);
-
-	void GetFirstNode(wchar_t* str, size_t n);
-	void SetFirstNode(wchar_t* str);
 };
