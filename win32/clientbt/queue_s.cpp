@@ -2,14 +2,12 @@
 #include "framework.h"
 #include "queue_s.h"
 
-//  constructor
 CQueue_s::CQueue_s()
 {
 	First = Last = NULL;
 	Count = 0;
 }
 
-// destructor
 CQueue_s::~CQueue_s()
 {
 	wchar_t str[MAX_PATH];
@@ -18,13 +16,11 @@ CQueue_s::~CQueue_s()
 		Remove(str, MAX_PATH);
 }
 
-//
 int CQueue_s::GetCount()
 {
 	return Count;
 }
 
-//
 bool CQueue_s::IsEmpty()
 {
 	return (Count == 0);
@@ -84,23 +80,4 @@ void CQueue_s::Remove(wchar_t* str, size_t n)
 
 	delete[] Node->str;
 	delete Node;
-}
-
-void CQueue_s::GetFirstNode(wchar_t* str, size_t n)
-{
-	wcscpy_s(str, n, First->str);
-}
-
-void CQueue_s::SetFirstNode(wchar_t* str)
-{
-	NODE_S* Node;
-	size_t n;
-
-	Node = First;
-
-	delete[] Node->str;
-
-	n = wcslen(str) + 1;
-	Node->str = new wchar_t[n];
-	wcscpy_s(Node->str, n, str);
 }
