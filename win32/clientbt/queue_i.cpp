@@ -2,26 +2,22 @@
 #include "framework.h"
 #include "queue_i.h"
 
-//  constructor
 CQueue_i::CQueue_i()
 {
 	First = Last = NULL;
 	Count = 0;
 }
 
-// destructor
 CQueue_i::~CQueue_i()
 {
-	RemoveAll();
+	Clear();
 }
 
-//
 int CQueue_i::GetCount()
 {
 	return Count;
 }
 
-//
 bool CQueue_i::IsEmpty()
 {
 	return (Count == 0);
@@ -53,32 +49,6 @@ void CQueue_i::Add(int value)
 	Count++;
 }
 
-//               return
-//         ----------------->
-//      Node                First                                            Last
-//     +----+              +----+    +----+    +----+    +----+    +----+    +----+
-//     |    |--->          |    |--->|    |--->|    |--->|    |--->|    |--->|    |---> NULL
-//     +----+              +----+    +----+    +----+    +----+    +----+    +----+
-//
-void CQueue_i::Return(int value)
-{
-	NODE_I* Node;
-
-	Node = new NODE_I;
-	Node->value = value;
-	Node->Next = NULL;
-
-	if (IsEmpty()) {
-		First = Last = Node;
-	}
-	else {
-		Node->Next = First;
-		First = Node;
-	}
-
-	Count++;
-}
-
 //               remove
 //         <-----------------
 //      First                                                                 Last
@@ -102,7 +72,33 @@ void CQueue_i::Remove(int* value)
 	delete Node;
 }
 
-void CQueue_i::RemoveAll()
+//               push
+//         ----------------->
+//      Node                First                                            Last
+//     +----+              +----+    +----+    +----+    +----+    +----+    +----+
+//     |    |--->          |    |--->|    |--->|    |--->|    |--->|    |--->|    |---> NULL
+//     +----+              +----+    +----+    +----+    +----+    +----+    +----+
+//
+void CQueue_i::Push(int value)
+{
+	NODE_I* Node;
+
+	Node = new NODE_I;
+	Node->value = value;
+	Node->Next = NULL;
+
+	if (IsEmpty()) {
+		First = Last = Node;
+	}
+	else {
+		Node->Next = First;
+		First = Node;
+	}
+
+	Count++;
+}
+
+void CQueue_i::Clear()
 {
 	int value;
 
