@@ -22,7 +22,7 @@ public:
 	int GetCount();
 	bool IsEmpty();
 	void Add(int value);
-	void Return(int value);
 	void Remove(int* value);
-	void RemoveAll();
+	void Push(int value);
+	void Clear();
 };
