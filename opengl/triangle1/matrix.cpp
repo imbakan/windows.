@@ -38,53 +38,6 @@ CMatrix::~CMatrix()
 
 }
 
-//         Sa C, ang one dimensional array ay ganito:
-//
-//         1         2         3         4         5         6         7         8         9        10        11        12        13        14        15        16
-//
-//         Pagginawang two dimensional ay magiging ganito:
-// 
-//         1         2         3         4
-//         5         6         7         8
-//         9        10        11        12
-//        13        14        15        16
-//
-//        Kabaliktaran 'to sa OpenGL, ang two dimensional sa OpenGL ay ganito:
-//
-//         1         5         9         13
-//         2         6        10         14
-//         3         7        11         15
-//         4         8        12         16
-
-void CMatrix::Output()
-{
-	wchar_t str[100];
-	int i, j;
-
-
-	for (i = 0; i < NA; i++)
-		m.a[i] = (float)(i + 1);
-
-	for (i = 0; i < NA; i++)
-	{
-		swprintf_s(str, 100, L"%10.0f", m.a[i]);
-		OutputDebugString(str);
-	}
-
-	OutputDebugString(L"\n\n");
-
-	for (i = 0; i < NB; i++)
-	{
-		for (j = 0; j < NB; j++)
-		{
-			swprintf_s(str, 100, L"%10.0f", m.b[i][j]);
-			OutputDebugString(str);
-		}
-
-		OutputDebugString(L"\n");
-	}
-}
-
 // gluLookAt
 // https://www.opengl.org/sdk/docs/man2/xhtml/gluLookAt.xml
 // GluLookAt code
