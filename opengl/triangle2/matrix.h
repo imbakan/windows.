@@ -23,8 +23,6 @@ public:
     CMatrix(float* a);
     ~CMatrix();
 
-    void Output();
-
     void LookAt(float eyex, float eyey, float eyez, float centerx, float centery, float centerz, float upx, float upy, float upz);
 
     void Orthographic(float left, float right, float bottom, float top, float znear, float zfar);
