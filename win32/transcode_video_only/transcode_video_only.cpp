@@ -8,7 +8,7 @@
 
 const int MAX_LOADSTRING = 100;
 
-const wchar_t destination_pathname[] = { L"E:\\data\\transcode_video_only" };
+const wchar_t destination_pathname[] = { L"E:\\transcode_video_only" };
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
