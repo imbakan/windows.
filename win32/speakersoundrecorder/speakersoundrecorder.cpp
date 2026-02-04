@@ -1,8 +1,6 @@
 
 // Ito ay pangcapture ng audio na galing sa speaker ng computer.
 // Ito ay isesave sa m4a file.
-//
-// REV. Nov. 14, 2025 8:17 AM
 
 #include "framework.h"
 #include "speakersoundrecorder.h"
