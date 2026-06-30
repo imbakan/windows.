@@ -42,7 +42,7 @@ wchar_t* GetErrorMessage(int err)
 		wcscpy_s(str, n, L"Bad address.\r\nThe system detected an invalid pointer address in attempting to use a pointer argument of a call. This error occurs if an application passes an invalid pointer value, or if the length of the buffer is too small. For instance, if the length of an argument, which is a sockaddr structure, is smaller than the sizeof(sockaddr).");
 		break;
 	case WSAEINVAL:
-		wcscpy_s(str, n, L"Invalid argument.\r\nSome invalid argument was supplied (for example, specifying an invalid level to the setsockopt function). In some instances, it also refers to the current state of the socketófor instance, calling accept on a socket that is not listening.");
+		wcscpy_s(str, n, L"Invalid argument.\r\nSome invalid argument was supplied (for example, specifying an invalid level to the setsockopt function). In some instances, it also refers to the current state of the socket for instance, calling accept on a socket that is not listening.");
 		break;
 	case WSAEMFILE:
 		wcscpy_s(str, n, L"Too many open files.\r\nToo many open sockets. Each implementation may have a maximum number of socket handles available, either globally, per process, or per thread.");
@@ -51,10 +51,10 @@ wchar_t* GetErrorMessage(int err)
 		wcscpy_s(str, n, L"Resource temporarily unavailable.\r\nThis error is returned from operations on nonblocking sockets that cannot be completed immediately, for example recv when no data is queued to be read from the socket. It is a nonfatal error, and the operation should be retried later. It is normal for WSAEWOULDBLOCK to be reported as the result from calling connect on a nonblocking SOCK_STREAM socket, since some time must elapse for the connection to be established.");
 		break;
 	case WSAEINPROGRESS:
-		wcscpy_s(str, n, L"Operation now in progress.\r\nA blocking operation is currently executing. Windows Sockets only allows a single blocking operationóper- task or threadóto be outstanding, and if any other function call is made (whether or not it references that or any other socket) the function fails with the WSAEINPROGRESS error.");
+		wcscpy_s(str, n, L"Operation now in progress.\r\nA blocking operation is currently executing. Windows Sockets only allows a single blocking operation per- task or thread to be outstanding, and if any other function call is made (whether or not it references that or any other socket) the function fails with the WSAEINPROGRESS error.");
 		break;
 	case WSAEALREADY:
-		wcscpy_s(str, n, L"Operation already in progress.\r\nAn operation was attempted on a nonblocking socket with an operation already in progressóthat is, calling connect a second time on a nonblocking socket that is already connecting, or canceling an asynchronous request (WSAAsyncGetXbyY) that has already been canceled or completed.");
+		wcscpy_s(str, n, L"Operation already in progress.\r\nAn operation was attempted on a nonblocking socket with an operation already in progress that is, calling connect a second time on a nonblocking socket that is already connecting, or canceling an asynchronous request (WSAAsyncGetXbyY) that has already been canceled or completed.");
 		break;
 	case WSAENOTSOCK:
 		wcscpy_s(str, n, L"Socket operation on nonsocket.\r\nAn operation was attempted on something that is not a socket. Either the socket handle parameter did not reference a valid socket, or for select, a member of an fd_set was not valid.");
@@ -87,7 +87,7 @@ wchar_t* GetErrorMessage(int err)
 		wcscpy_s(str, n, L"Address family not supported by protocol family.\r\nAn address incompatible with the requested protocol was used. All sockets are created with an associated address family (that is, AF_INET for Internet Protocols) and a generic protocol type (that is, SOCK_STREAM). This error is returned if an incorrect protocol is explicitly requested in the socket call, or if an address of the wrong family is used for a socket, for example, in sendto.");
 		break;
 	case WSAEADDRINUSE:
-		wcscpy_s(str, n, L"Address already in use.\r\nTypically, only one usage of each socket address (protocol/IP address/port) is permitted. This error occurs if an application attempts to bind a socket to an IP address/port that has already been used for an existing socket, or a socket that was not closed properly, or one that is still in the process of closing. For server applications that need to bind multiple sockets to the same port number, consider using setsockopt (SO_REUSEADDR). Client applications usually need not call bind at allóconnect chooses an unused port automatically. When bind is called with a wildcard address (involving ADDR_ANY), a WSAEADDRINUSE error could be delayed until the specific address is committed. This could happen with a call to another function later, including connect, listen, WSAConnect, or WSAJoinLeaf.");
+		wcscpy_s(str, n, L"Address already in use.\r\nTypically, only one usage of each socket address (protocol/IP address/port) is permitted. This error occurs if an application attempts to bind a socket to an IP address/port that has already been used for an existing socket, or a socket that was not closed properly, or one that is still in the process of closing. For server applications that need to bind multiple sockets to the same port number, consider using setsockopt (SO_REUSEADDR). Client applications usually need not call bind at all connect chooses an unused port automatically. When bind is called with a wildcard address (involving ADDR_ANY), a WSAEADDRINUSE error could be delayed until the specific address is committed. This could happen with a call to another function later, including connect, listen, WSAConnect, or WSAJoinLeaf.");
 		break;
 	case WSAEADDRNOTAVAIL:
 		wcscpy_s(str, n, L"Cannot assign requested address.\r\nThe requested address is not valid in its context. This normally results from an attempt to bind to an address that is not valid for the local computer. This can also result from connect, sendto, WSAConnect, WSAJoinLeaf, or WSASendTo when the remote address or port is not valid for a remote computer (for example, address or port 0).");
@@ -114,7 +114,7 @@ wchar_t* GetErrorMessage(int err)
 		wcscpy_s(str, n, L"Socket is already connected.\r\nA connect request was made on an already-connected socket. Some implementations also return this error if sendto is called on a connected SOCK_DGRAM socket (for SOCK_STREAM sockets, the to parameter in sendto is ignored) although other implementations treat this as a legal occurrence.");
 		break;
 	case WSAENOTCONN:
-		wcscpy_s(str, n, L"Socket is not connected.\r\nA request to send or receive data was disallowed because the socket is not connected and (when sending on a datagram socket using sendto) no address was supplied. Any other type of operation might also return this errorófor example, setsockopt setting SO_KEEPALIVE if the connection has been reset.");
+		wcscpy_s(str, n, L"Socket is not connected.\r\nA request to send or receive data was disallowed because the socket is not connected and (when sending on a datagram socket using sendto) no address was supplied. Any other type of operation might also return this error for example, setsockopt setting SO_KEEPALIVE if the connection has been reset.");
 		break;
 	case WSAESHUTDOWN:
 		wcscpy_s(str, n, L"Cannot send after socket shutdown.\r\nA request to send or receive data was disallowed because the socket had already been shut down in that direction with a previous shutdown call. By calling shutdown a partial close of a socket is requested, which is a signal that sending or receiving, or both have been discontinued.");
@@ -126,7 +126,7 @@ wchar_t* GetErrorMessage(int err)
 		wcscpy_s(str, n, L"Connection timed out.\r\nA connection attempt failed because the connected party did not properly respond after a period of time, or the established connection failed because the connected host has failed to respond.");
 		break;
 	case WSAECONNREFUSED:
-		wcscpy_s(str, n, L"Connection refused.\r\nNo connection could be made because the target computer actively refused it. This usually results from trying to connect to a service that is inactive on the foreign hostóthat is, one with no server application running.");
+		wcscpy_s(str, n, L"Connection refused.\r\nNo connection could be made because the target computer actively refused it. This usually results from trying to connect to a service that is inactive on the foreign host that is, one with no server application running.");
 		break;
 	case WSAELOOP:
 		wcscpy_s(str, n, L"Cannot translate name.\r\nCannot translate a name.");
@@ -213,7 +213,7 @@ wchar_t* GetErrorMessage(int err)
 		wcscpy_s(str, n, L"This is a nonrecoverable error.\r\nThis indicates that some sort of nonrecoverable error occurred during a database lookup. This may be because the database files (for example, BSD-compatible HOSTS, SERVICES, or PROTOCOLS files) could not be found, or a DNS request was returned by the server with a severe error.");
 		break;
 	case WSANO_DATA:
-		wcscpy_s(str, n, L"Valid name, no data record of requested type.\r\nThe requested name is valid and was found in the database, but it does not have the correct associated data being resolved for. The usual example for this is a host name-to-address translation attempt (using gethostbyname or WSAAsyncGetHostByName) which uses the DNS (Domain Name Server). An MX record is returned but no A recordóindicating the host itself exists, but is not directly reachable.");
+		wcscpy_s(str, n, L"Valid name, no data record of requested type.\r\nThe requested name is valid and was found in the database, but it does not have the correct associated data being resolved for. The usual example for this is a host name-to-address translation attempt (using gethostbyname or WSAAsyncGetHostByName) which uses the DNS (Domain Name Server). An MX record is returned but no A record indicating the host itself exists, but is not directly reachable.");
 		break;
 	case WSA_QOS_RECEIVERS:
 		wcscpy_s(str, n, L"QoS receivers.\r\nAt least one QoS reserve has arrived.");
@@ -297,7 +297,7 @@ wchar_t* GetErrorMessage(int err)
 		wcscpy_s(str, n, L"Reserved policy QoS element type.\r\nA reserved policy element was found in the QoS provider-specific buffer.");
 		break;
 	default:
-		swprintf_s(str, n, L"HINDI KO ALAM KUNG SAAN ANG MALI %d", err);
+		swprintf_s(str, n, L"Hindi ko alam kung saan ang mali. Error code %d", err);
 	}
 
 	return str;
