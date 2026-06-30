@@ -12,7 +12,7 @@ CConnectDialog::~CConnectDialog()
 
 }
 
-void CConnectDialog::GetBluetoothDevices(CQueue_s* que)
+void CConnectDialog::GetBluetoothDevices(CLinkedList<wchar_t*>* list1, CLinkedList<wchar_t*>* list2)
 {
 	HANDLE handle;
 	PWSAQUERYSET queryset;
@@ -56,8 +56,8 @@ void CConnectDialog::GetBluetoothDevices(CQueue_s* que)
 			btaddr = (unsigned char*)queryset->lpcsaBuffer->RemoteAddr.lpSockaddr->sa_data;
 			swprintf_s(str2, 20, L"%02x:%02x:%02x:%02x:%02x:%02x", btaddr[5], btaddr[4], btaddr[3], btaddr[2], btaddr[1], btaddr[0]);
 
-			que->Add(str1);
-			que->Add(str2);
+			list1->Add(str1);
+			list2->Add(str2);
 		}
 		else {
 
@@ -101,7 +101,7 @@ void CConnectDialog::OnInitDialog(HWND hWnd)
 	HWND hwnd;
 	RECT rect1, rect2;
 	int x, y;
-	CQueue_s que;
+	CLinkedList<wchar_t*> list1, list2;
 
 	hwnd = GetParent(hWnd);
 	GetWindowRect(hwnd, &rect1);
@@ -118,26 +118,27 @@ void CConnectDialog::OnInitDialog(HWND hWnd)
 	LV_COLUMN lvc;
 	LV_ITEM lvi;
 	int i;
-	wchar_t str1[BTH_MAX_NAME_SIZE], str2[20];
+	wchar_t str[100];
+	wchar_t* str1, * str2;
 
 	// header
 	lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
 	lvc.cx = 150;
 	lvc.fmt = LVCFMT_LEFT;
-	lvc.pszText = str1;
+	lvc.pszText = str;
 
 	// column 1
 	lvc.iSubItem = 0;
-	wcscpy_s(str1, BTH_MAX_NAME_SIZE, L"Device");
+	wcscpy_s(str, 100, L"Device");
 	if (ListView_InsertColumn(hList, 0, &lvc) == -1) return;
 
 	// column 2
 	lvc.iSubItem = 1;
-	wcscpy_s(str1, BTH_MAX_NAME_SIZE, L"Address");
+	wcscpy_s(str, 100, L"Address");
 	if (ListView_InsertColumn(hList, 1, &lvc) == -1) return;
 
 	// populate
-	GetBluetoothDevices(&que);
+	GetBluetoothDevices(&list1, &list2);
 
 	lvi.mask = LVIF_TEXT | LVIF_IMAGE | LVIF_STATE;
 	lvi.state = 0;
@@ -147,16 +148,22 @@ void CConnectDialog::OnInitDialog(HWND hWnd)
 
 	i = 0;
 
-	while (!que.IsEmpty()) {
+	while (!list1.IsEmpty()) {
 
-		que.Remove(str1, BTH_MAX_NAME_SIZE);
-		que.Remove(str2, 20);
+		list1.Remove(&str1);
+		list2.Remove(&str2);
 
 		lvi.iItem = i;
 		lvi.pszText = str1;
 
 		ListView_InsertItem(hList, &lvi);            // column 1
 		ListView_SetItemText(hList, i, 1, str2);     // column 2
+
+		//OutputDebugString(str1);
+		//OutputDebugString(L"\n");
+
+		delete[] str1;
+		delete[] str2;
 	}
 
 	// idisable ang ok button
