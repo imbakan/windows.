@@ -1,25 +1,24 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by clientbt.rc
+// Used by bt_client.rc
 
 #define IDS_APP_TITLE			103
 
 #define IDR_MAINFRAME			128
-#define IDD_CLIENTBT_DIALOG		102
+#define IDD_BTCLIENT_DIALOG	102
 #define IDD_ABOUTBOX			103
 #define IDM_ABOUT				104
 #define IDM_EXIT				105
-#define IDI_CLIENTBT			107
+#define IDI_BTCLIENT			107
 #define IDI_SMALL				108
-#define IDC_CLIENTBT			109
+#define IDC_BTCLIENT			109
 
 #define IDD_DIALOG1				110
+#define IDD_DIALOG2				120
 
 #define IDM_CONNECT				111
 #define IDM_DISCONNECT			112
 #define IDM_CLOSE				121
-
-#define IDM_DOWNLOAD			131
 
 #define IDM_EMERGENCY_EXIT		141
 
@@ -34,9 +33,10 @@
 #define IDC_EDIT1				1001
 #define IDC_EDIT2				1002
 #define IDC_EDIT3				1003
-#define IDC_TREE1				1004
-#define IDC_LIST1				1005
-#define IDC_LIST2				1006
+
+#define IDC_TREE1				1005
+#define IDC_LIST1				1006
+#define IDC_LIST2				1007
 
 #define IDC_MYICON				2
 #ifndef IDC_STATIC
