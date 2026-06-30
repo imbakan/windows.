@@ -1,5 +1,5 @@
 
-#include "queue_s.h"
+#include "linkedlist.h"
 
 #pragma once
 
@@ -11,7 +11,7 @@ private:
 	wchar_t str[BTH_MAX_NAME_SIZE];
 	wchar_t* p;
 
-	void GetBluetoothDevices(CQueue_s* que);
+	void GetBluetoothDevices(CLinkedList<wchar_t*>* list1, CLinkedList<wchar_t*>* list2);
 
 	void OnInitDialog(HWND hWnd);
 	void OnOk(HWND hWnd, WPARAM wParam);
