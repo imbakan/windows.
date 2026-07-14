@@ -1,6 +1,5 @@
 
 // Bluetooth - client side
-// compatible with android app bt_client and bt_server
 
 #include "framework.h"
 #include "bt_client.h"
