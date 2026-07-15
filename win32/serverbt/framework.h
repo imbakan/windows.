@@ -8,12 +8,13 @@
 
 #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
 
-#define WM_LOG_MESSAGE			WM_USER + 5
-#define WM_SERVER_RUNNING		WM_USER + 6
-#define WM_SERVER_SHUTTING_DOWN	WM_USER + 7
-#define WM_CREATE_CLIENT		WM_USER + 8
-#define WM_CLIENT_RUNNING		WM_USER + 9
-#define WM_CLIENT_SHUTTING_DOWN	WM_USER + 10
+#define WM_AFTERWINDOWDISPLAYED	WM_USER + 5
+#define WM_MESSAGE				WM_USER + 6
+#define WM_SERVER_RUNNING		WM_USER + 7
+#define WM_SERVER_SHUTTING_DOWN	WM_USER + 8
+#define WM_CREATE_CLIENT		WM_USER + 9
+#define WM_CLIENT_RUNNING		WM_USER + 10
+#define WM_CLIENT_SHUTTING_DOWN	WM_USER + 11
 
 // Windows Header Files
 #include <windows.h>
