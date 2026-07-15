@@ -1,4 +1,20 @@
 
+// nareceive ng server
+//     +---------------+
+//     |   Client Id   |
+//     +---------------+
+//     |      Size     |
+//     +---------------+
+//     |      Data     |
+//     +---------------+
+
+// sinend ng server
+//     +---------------+
+//     |   Client Id   |
+//     +---------------+
+//     |      Data     |
+//     +---------------+
+
 #include "framework.h"
 #include "client.h"
 
@@ -30,62 +46,29 @@ void CClient::Shutdown()
 	int errcode = shutdown(socket, SD_SEND);
 
 	if (errcode == SOCKET_ERROR)
-		SendMessage(hWnd, WM_LOG_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
+		SendMessage(hWnd, WM_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
 }
 
-void CClient::Send(int value)
+wchar_t* CClient::GetName()
 {
-	const int n = sizeof(int);
-	int* p;
-	int count;
-	char buffer[n];
-
-	p = (int*)buffer;
-	*p = value;
-
-	count = send(socket, buffer, n, 0);
-
-	if (count == SOCKET_ERROR)
-		SendMessage(hWnd, WM_LOG_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
+	return name;
 }
 
-void CClient::Send(long long value)
+long long CClient::GetId()
 {
-	const int n = sizeof(long long);
-	long long* p;
-	int count;
-	char buffer[n];
-
-	p = (long long*)buffer;
-	*p = value;
-
-	count = send(socket, buffer, n, 0);
-
-	if (count == SOCKET_ERROR)
-		SendMessage(hWnd, WM_LOG_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
+	return id;
 }
 
-void CClient::Send(wchar_t* str)
+void CClient::OnSetOrder(bool* needdata, CLinkedList<int>* order, int* next, int cmd)
 {
-	int count, len, n;
+	wchar_t str[100];
+	swprintf(str, 100, L"%20d\n", cmd);
+	OutputDebugString(str);
 
-	len = (int)wcslen(str);
-	if (len == 0) return;
-
-	Send(len);
-
-	n = len * sizeof(wchar_t);
-	count = send(socket, (char*)str, n, 0);
-
-	if (count == SOCKET_ERROR)
-		SendMessage(hWnd, WM_LOG_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
-}
-
-void CClient::OnSetOrder(bool* needdata, CQueue_i* order, int* next, int cmd)
-{
 	*needdata = false;
 
 	switch (cmd) {
+
 	case JOIN:
 		order->Add(GET_INTEGER);
 		order->Add(GET_STRING);
@@ -93,6 +76,17 @@ void CClient::OnSetOrder(bool* needdata, CQueue_i* order, int* next, int cmd)
 		order->Add(GET_INTEGER);
 		order->Add(SET_ORDER);
 		break;
+
+	case FORWARD:
+		order->Add(GET_LONGLONG);
+		order->Add(GET_LONGLONG);
+		order->Add(GET_ATTRIBUTE);
+		order->Add(SEND_ATTRIBUTE);
+		order->Add(FORWARD);
+		order->Add(GET_INTEGER);
+		order->Add(SET_ORDER);
+		break;
+
 	default:
 		order->Add(GET_INTEGER);
 		order->Add(SET_ORDER);
@@ -110,7 +104,7 @@ void CClient::OnSetOrder(bool* needdata, CQueue_i* order, int* next, int cmd)
 //                |                                  |
 //             index[0]                           index[1]
 
-void CClient::OnNeedData(char* buffer, int* index, int* buffer_size, bool* needdata, CQueue_i* order, int* next)
+void CClient::OnNeedData(char* buffer, int* index, int* buffer_size, bool* needdata, CLinkedList<int>* order, int* next)
 {
 	int i, k, n;
 
@@ -130,7 +124,7 @@ void CClient::OnNeedData(char* buffer, int* index, int* buffer_size, bool* needd
 	order->Remove(next);
 }
 
-void CClient::OnGetInteger(char* buffer, int* index, CQueue_i* order, int* next, int* value)
+void CClient::OnGetInteger(char* buffer, int* index, CLinkedList<int>* order, int* next, int* value)
 {
 	int avail_size, req_size;
 	int* p;
@@ -152,7 +146,7 @@ void CClient::OnGetInteger(char* buffer, int* index, CQueue_i* order, int* next,
 	order->Remove(next);
 }
 
-void CClient::OnGetLongLong(char* buffer, int* index, CQueue_i* order, int* next, long long* value)
+void CClient::OnGetLongLong(char* buffer, int* index, CLinkedList<int>* order, int* next, CLinkedList<long long>* arrayll)
 {
 	int avail_size, req_size;
 	long long* p;
@@ -167,14 +161,14 @@ void CClient::OnGetLongLong(char* buffer, int* index, CQueue_i* order, int* next
 	}
 
 	p = (long long*)&buffer[index[0]];
-	*value = *p;
+	arrayll->Add(*p);
 
 	index[0] += req_size;
 
 	order->Remove(next);
 }
 
-void CClient::OnGetString(char* buffer, int* index, CQueue_i* order, int* next, int len, wchar_t** str)
+void CClient::OnGetString(char* buffer, int* index, CLinkedList<int>* order, int* next, int len, wchar_t** str)
 {
 	int avail_size, req_size, i, k, size;
 
@@ -202,49 +196,186 @@ void CClient::OnGetString(char* buffer, int* index, CQueue_i* order, int* next, 
 
 	index[0] += req_size;
 
+	//OutputDebugString(L"          ");
+	//OutputDebugString(*str);
+	//OutputDebugString(L"\n");
+
 	order->Remove(next);
 }
 
-void CClient::OnRunning(CQueue_i* order, int* next, wchar_t* str)
+void CClient::OnGetAttribute(CLinkedList<int>* order, int* next, CLinkedList <long long>* arrayll, long long* size, CClient** client)
+{
+	CClient* item;
+	LV_ITEM lvi;
+	int i, n;
+	long long id;
+
+	arrayll->Remove(&id);
+	arrayll->Remove(size);
+
+	// kunin ang destination client base sa id number
+	n = ListView_GetItemCount(hList);
+
+	lvi.mask = LVIF_PARAM;
+
+	for (i = 0; i < n; i++) {
+
+		lvi.iItem = i;
+		ListView_GetItem(hList, &lvi);
+
+		item = (CClient*)lvi.lParam;
+
+		if (id == item->GetId()) {
+			*client = item;
+			break;
+		}
+	}
+
+	order->Remove(next);
+}
+
+void CClient::OnRunning(CLinkedList<int>* order, int* next, wchar_t* str)
 {
 	wcscpy_s(name, MAX_NAME_STRING, str);
 
-	PostMessage(hWnd, WM_CLIENT_RUNNING, (WPARAM)0, (LPARAM)this);
+	SendMessage(hWnd, WM_CLIENT_RUNNING, 0, (LPARAM)this);
 
 	order->Remove(next);
 }
 
-wchar_t* CClient::GetName()
+void CClient::OnForward(char* buffer, int* index, int* buffer_size, bool* needdata, CLinkedList<int>* order, int* next, CClient* client, long long* data_size)
 {
-	return name;
+	int avail_size;
+
+	avail_size = index[1] - index[0];
+
+	if (avail_size < *data_size) {
+
+		if (avail_size > 0)
+			client->Send(&buffer[index[0]], avail_size);
+
+		index[0] = index[1] = 0;
+		*buffer_size = BUFFER_SIZE;
+		*data_size -= avail_size;
+		*needdata = true;
+	}
+	else {
+
+		client->Send(&buffer[index[0]], (int) *data_size);
+
+		index[0] += (int)*data_size;
+		order->Remove(next);
+	}
 }
 
-long long CClient::GetId()
+void CClient::OnSendAttribute(CLinkedList<int>* order, int* next, CClient* client)
 {
-	return id;
+	client->Send(CClient::CLIENT_ID);
+	client->Send(id);
+
+	order->Remove(next);
+}
+
+void CClient::Send(int value)
+{
+	const int n = sizeof(int);
+	int* p;
+	int count;
+	char buffer[n];
+
+	p = (int*)buffer;
+	*p = value;
+
+	count = send(socket, buffer, n, 0);
+
+	if (count == SOCKET_ERROR)
+		SendMessage(hWnd, WM_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
+}
+
+void CClient::Send(long long value)
+{
+	const int n = sizeof(long long);
+	long long* p;
+	int count;
+	char buffer[n];
+
+	p = (long long*)buffer;
+	*p = value;
+
+	count = send(socket, buffer, n, 0);
+
+	if (count == SOCKET_ERROR)
+		SendMessage(hWnd, WM_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
+}
+
+void CClient::Send(wchar_t* str)
+{
+	int count, len, n;
+
+	len = (int)wcslen(str);
+	if (len == 0) return;
+
+	Send(len);
+
+	n = len * sizeof(wchar_t);
+	count = send(socket, (char*)str, n, 0);
+
+	if (count == SOCKET_ERROR)
+		SendMessage(hWnd, WM_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
+}
+
+void CClient::Send(char* buffer, int size)
+{
+	int count;
+
+	if (size == 0) return;
+
+	Send(size);
+	count = send(socket, buffer, size, 0);
+
+	if (count == SOCKET_ERROR)
+		SendMessage(hWnd, WM_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
+}
+
+void CClient::PrintOutput(int cmd)
+{
+	switch (cmd) {
+	case SET_ORDER:		OutputDebugString(L"SET_ORDER\n");		break;
+	case NEED_DATA:		OutputDebugString(L"NEED_DATA\n");		break;
+	case GET_INTEGER:	OutputDebugString(L"GET_INTEGER\n");	break;
+	case GET_LONGLONG:	OutputDebugString(L"GET_LONGLONG\n");	break;
+	case GET_STRING:	OutputDebugString(L"GET_STRING\n");		break;
+	case GET_ATTRIBUTE:	OutputDebugString(L"GET_ATTRIBUTE\n");	break;
+	case RUNNING:		OutputDebugString(L"RUNNING\n");		break;
+	case FORWARD:		OutputDebugString(L"FORWARD\n");		break;
+	case SEND_ATTRIBUTE:OutputDebugString(L"SEND_ATTRIBUTE\n"); break;
+	default:			OutputDebugString(L"**************\n"); break;
+	}
 }
 
 DWORD WINAPI CClient::Function(LPVOID lpParam)
 {
 	CClient* p = (CClient*)lpParam;
-	CQueue_i order;
+	CClient* client;
+	CLinkedList<int> order;
+	CLinkedList<long long> array_ll;
+	CLinkedList<wchar_t*> array_s;
 	int errcode, count, buffer_size, index[2], next;
 	char* buffer;
-	char* pbuffer;
 	bool need_data;
 	int ivalue;
-	long long llvalue;
+	long long size;
 	wchar_t* string;
 
-	SendMessage(p->hWnd, WM_LOG_MESSAGE, 0, (LPARAM)L"The client thread has started.");
+	SendMessage(p->hWnd, WM_MESSAGE, 0, (LPARAM)L"The client thread has started.");
 
+	client = NULL;
 	buffer_size = BUFFER_SIZE;
 	buffer = new char[buffer_size];
-	ivalue = count = 0;
+	count = 0;
 	index[0] = index[1] = 0;
-	string = NULL;
-	pbuffer = NULL;
 	need_data = true;
+	string = NULL;
 	next = GET_INTEGER;
 	order.Add(SET_ORDER);
 
@@ -272,14 +403,20 @@ DWORD WINAPI CClient::Function(LPVOID lpParam)
 			need_data = false;
 		}
 
+		p->PrintOutput(next);
+
 		switch (next) {
-		case SET_ORDER:						p->OnSetOrder(&need_data, &order, &next, ivalue);						break;
-		case NEED_DATA:						p->OnNeedData(buffer, index, &buffer_size, &need_data, &order, &next);	break;
-		case GET_INTEGER:					p->OnGetInteger(buffer, index, &order, &next, &ivalue);							break;
-		case GET_LONGLONG:					p->OnGetLongLong(buffer, index, &order, &next, &llvalue);						break;
-		case GET_STRING:					p->OnGetString(buffer, index, &order, &next, ivalue, &string);				break;
-		case RUNNING:						p->OnRunning(&order, &next, string);											break;
+		case SET_ORDER:						p->OnSetOrder(&need_data, &order, &next, ivalue);										break;
+		case NEED_DATA:						p->OnNeedData(buffer, index, &buffer_size, &need_data, &order, &next);					break;
+		case GET_INTEGER:					p->OnGetInteger(buffer, index, &order, &next, &ivalue);									break;
+		case GET_LONGLONG:					p->OnGetLongLong(buffer, index, &order, &next, &array_ll);								break;
+		case GET_STRING:					p->OnGetString(buffer, index, &order, &next, ivalue, &string);							break;
+		case GET_ATTRIBUTE:					p->OnGetAttribute(&order, &next, &array_ll, &size, &client);							break;
+		case RUNNING:						p->OnRunning(&order, &next, string);													break;
+		case FORWARD:						p->OnForward(buffer, index, &buffer_size, &need_data, &order, &next, client, &size);	break;
+		case SEND_ATTRIBUTE:                p->OnSendAttribute(&order, &next, client);												break;
 		}
+
 	}
 
 	if (string != NULL) delete[] string;
@@ -287,14 +424,14 @@ DWORD WINAPI CClient::Function(LPVOID lpParam)
 
 	errcode = shutdown(p->socket, SD_SEND);
 	if (count == SOCKET_ERROR)
-		SendMessage(p->hWnd, WM_LOG_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
+		SendMessage(p->hWnd, WM_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
 
 	errcode = closesocket(p->socket);
 	if (count == SOCKET_ERROR)
-		SendMessage(p->hWnd, WM_LOG_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
+		SendMessage(p->hWnd, WM_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
 
 	PostMessage(p->hWnd, WM_CLIENT_SHUTTING_DOWN, 0, (LPARAM)p);
-	SendMessage(p->hWnd, WM_LOG_MESSAGE, 0, (LPARAM)L"The client thread has exited.");
+	SendMessage(p->hWnd, WM_MESSAGE, 0, (LPARAM)L"The client thread has exited.");
 
 	return 0;
 }
