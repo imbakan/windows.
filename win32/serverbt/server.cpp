@@ -30,7 +30,7 @@ void CServer::Shutdown()
 	int errcode = closesocket(serversocket);
 
 	if (errcode == SOCKET_ERROR)
-		SendMessage(hWnd, WM_LOG_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
+		SendMessage(hWnd, WM_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
 }
 
 DWORD WINAPI CServer::Function(LPVOID lpParam)
@@ -43,12 +43,12 @@ DWORD WINAPI CServer::Function(LPVOID lpParam)
 	LPCSADDR_INFO lpcsai = NULL;
 	WSAQUERYSET wsaqs = { 0 };
 
-	SendMessage(p->hWnd, WM_LOG_MESSAGE, 0, (LPARAM)L"The server thread has started.");
+	SendMessage(p->hWnd, WM_MESSAGE, 0, (LPARAM)L"The server thread has started.");
 
 	p->serversocket = socket(AF_BTH, SOCK_STREAM, BTHPROTO_RFCOMM);
 
 	if (p->serversocket == INVALID_SOCKET) {
-		SendMessage(p->hWnd, WM_LOG_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
+		SendMessage(p->hWnd, WM_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
 		goto DITO;
 	}
 
@@ -58,7 +58,7 @@ DWORD WINAPI CServer::Function(LPVOID lpParam)
 	errcode = bind(p->serversocket, (struct sockaddr*)&sab, sizeof(SOCKADDR_BTH));
 
 	if (errcode == SOCKET_ERROR) {
-		SendMessage(p->hWnd, WM_LOG_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
+		SendMessage(p->hWnd, WM_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
 		goto DITO;
 	}
 
@@ -66,14 +66,14 @@ DWORD WINAPI CServer::Function(LPVOID lpParam)
 	errcode = getsockname(p->serversocket, (struct sockaddr*)&sab, &sablen);
 
 	if (errcode == SOCKET_ERROR) {
-		SendMessage(p->hWnd, WM_LOG_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
+		SendMessage(p->hWnd, WM_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
 		goto DITO;
 	}
 
 	lpcsai = (LPCSADDR_INFO)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(CSADDR_INFO));
 
 	if (lpcsai == NULL) {
-		SendMessage(p->hWnd, WM_LOG_MESSAGE, 0, (LPARAM)L"Di maka allocate ng memory para sa CSADDR_INFO.");
+		SendMessage(p->hWnd, WM_MESSAGE, 0, (LPARAM)L"Di maka allocate ng memory para sa CSADDR_INFO.");
 		goto DITO;
 	}
 
@@ -102,14 +102,14 @@ DWORD WINAPI CServer::Function(LPVOID lpParam)
 		HeapFree(GetProcessHeap(), 0, lpcsai);
 
 	if (errcode == SOCKET_ERROR) {
-		SendMessage(p->hWnd, WM_LOG_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
+		SendMessage(p->hWnd, WM_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
 		goto DITO;
 	}
 
 	errcode = listen(p->serversocket, SOMAXCONN);
 
 	if (errcode == SOCKET_ERROR) {
-		SendMessage(p->hWnd, WM_LOG_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
+		SendMessage(p->hWnd, WM_MESSAGE, 0, (LPARAM)GetErrorMessage(WSAGetLastError()));
 		goto DITO;
 	}
 
@@ -126,7 +126,7 @@ DWORD WINAPI CServer::Function(LPVOID lpParam)
 DITO:
 
 	SendMessage(p->hWnd, WM_SERVER_SHUTTING_DOWN, 0, 0);
-	SendMessage(p->hWnd, WM_LOG_MESSAGE, 0, (LPARAM)L"The server thread has exited.");
+	SendMessage(p->hWnd, WM_MESSAGE, 0, (LPARAM)L"The server thread has exited.");
 
 	return 0;
 }
