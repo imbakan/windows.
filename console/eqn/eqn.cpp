@@ -3,10 +3,11 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <ctype.h>
 #include <string.h>
+#include <ctype.h>
 #include "queue.h"
 
+void PrintOutput(CQueue* que);
 void PrintOutput(double** a, int m, int n);
 
 void CapString(char* str);
@@ -23,112 +24,140 @@ bool CheckForVariable(CQueue* que);
 bool CheckForConstant(CQueue* que);
 
 void CollectVariable(CQueue* que1, int n, CQueue* que2);
-void CreateVariable(char*** var, CQueue* que);
-void CreateMatrix(CQueue* que, char** var, int* m, int n, double*** a);
+
+void ConvertToArray(char*** var, CQueue* que);
+void ConvertToArray(CQueue* que, char** var, int* m, int n, double*** a);
+
 bool GaussJordanMethod(double** a, int m, int n);
 
 int main()
 {
     CQueue* que1;
     CQueue que2;
-    int i, m, n;
     double** a;
-    char str[100];
     char** var;
+	int i, m, n;
+	char str[200];
     bool pass;
 
+	printf("\n");
+	printf("System of Equation\n");
+	printf("\n");
+	printf("Type 'E' or 'e' to enter equaton.\n");
+	printf("Type 'Q' or 'q' to exit.\n");
+	printf("\n");
+
+	while (true) {
+
+		gets_s(str, 200);
+
+		if (strcmp(str, "Q") == 0 || strcmp(str, "q") == 0) break;
+
+		if (strcmp(str, "E") == 0 || strcmp(str, "e") == 0) {
+
+			printf("Enter number of equation: ");
+			gets_s(str, 200);
+
+			n = atoi(str);
+            que1 = new CQueue[n];
+
+            pass = true;
+
+			for (i = 0; i < n; i++) {
+
+				printf("Enter equation %d : ", i + 1);
+				gets_s(str, 200);
+
+                Parse(str, &que1[i]);
+
+                //PrintOutput(&que1[i]);
+
+                if (CheckForArrangement(&que1[i])) {
+                    pass = false;
+                    printf("invalid equation\n");
+                    break;
+                }
+
+                if (CheckForEqual(&que1[i])) {
+                    pass = false;
+                    printf("more than one equal in an equation\n");
+                    break;
+                }
+
+                if (CheckForVariable(&que1[i])) {
+                    pass = false;
+                    printf("identical variable found in an equation\n");
+                    break;
+                }
+
+                if (CheckForConstant(&que1[i])) {
+                    pass = false;
+                    printf("more than one constant in an equation\n");
+                    break;
+                }
+			}
+
+            if (pass) {
+
+                CollectVariable(que1, n, &que2);
+
+                m = que2.GetCount();
+
+                if (m != n) {
+                    pass = false;
+                    printf("number of equation are not equal number of variable\n");
+                }
+            }
+
+            // dito pass na sa error checking
+            
+            if (pass) {
+
+                ConvertToArray(&var, &que2);
+                ConvertToArray(que1, var, &m, n, &a);
+
+                //PrintOutput(a, m, n);
+
+                if (GaussJordanMethod(a, m, n)) {
+                    printf("\n");
+                    for (i = 0; i < n; i++)
+                        printf("%5s = %20.15f\n", var[i], a[i][n]);
+                    printf("\n");
+                }
+                else {
+                    printf("no solution\n");
+                }
+
+                // release variable
+                for (i = 0; i < n; i++)
+                    delete[] var[i];
+
+                delete[] var;
+
+                // release coefficient
+                for (i = 0; i < n; i++)
+                    delete[] a[i];
+
+                delete[] a;
+            }
+
+            delete[] que1;
+
+		}
+
+	}
+}
+
+void PrintOutput(CQueue* que)
+{
+    NODE* Node;
+
+    que->Reset();
+
+    while (que->Read(&Node))
+        printf("%s ", Node->str);
+
     printf("\n");
-
-    printf("Enter number of equation: ");
-    gets_s(str, 100);
-
-    n = atoi(str);
-    que1 = new CQueue[n];
-
-    pass = true;
-
-    for (i = 0; i < n; i++) {
-
-        printf("Enter equation %d : ", i + 1);
-        gets_s(str, 100);
-
-        Parse(str, &que1[i]);
-
-        if (CheckForArrangement(&que1[i])) {
-            pass = false;
-            printf("invalid equation\n");
-            break;
-        }
-
-        if (CheckForEqual(&que1[i])) {
-            pass = false;
-            printf("more than one equal in an equation\n");
-            break;
-        }
-
-        if (CheckForVariable(&que1[i])) {
-            pass = false;
-            printf("identical variable found in an equation\n");
-            break;
-        }
-
-        if (CheckForConstant(&que1[i])) {
-            pass = false;
-            printf("more than one constant in an equation\n");
-            break;
-        }
-    }
-
-    if (pass) {
-
-        CollectVariable(que1, n, &que2);
-
-        m = que2.GetCount();
-
-        if (m != n) {
-            pass = false;
-            printf("number of equation are not equal number of variable\n");
-        }
-    }
-
-    // dito pass na sa error checking
-
-    if (pass) {
-
-        CreateVariable(&var, &que2);
-        CreateMatrix(que1, var, &m, n, &a);
-
-        //PrintOutput(a, m, n);
-        //printf("\n");
-
-        if (GaussJordanMethod(a, m, n)) {
-            printf("\n");
-            for (i = 0; i < n; i++)
-                printf("%5s = %20.15f\n", var[i], a[i][n]);
-            printf("\n");
-        }
-        else {
-            printf("no solution\n");
-        }
-
-        //PrintOutput(a, m, n);
-
-        // release variable
-        for (i = 0; i < n; i++)
-            delete[] var[i];
-
-        delete[] var;
-
-        // release coefficient
-        for (i = 0; i < n; i++)
-            delete[] a[i];
-
-        delete[] a;
-    }
-
-    delete[] que1;
-
-    return 0;
 }
 
 void PrintOutput(double** a, int m, int n)
@@ -282,8 +311,6 @@ void Parse(char* str, CQueue* que)
 
     while (i < n) {
 
-        //printf("%5lld\n", i);
-
         if (strchr(number, str[i]) != NULL) {
 
             i1 = i;
@@ -291,10 +318,7 @@ void Parse(char* str, CQueue* que)
             GetNumber(str, i1, &i2);
             GetString(str1, 100, str, i1, i2);
 
-            //printf("%10lld%10lld %s\n", i1, i2, str1);
-            //printf("%20s\n", str1);
-
-            que->Add(str1, NUMBER);
+            que->Add(str1);
 
             i = i2 - 1;
 
@@ -306,10 +330,7 @@ void Parse(char* str, CQueue* que)
             GetAlpha(str, i1, &i2);
             GetString(str1, 100, str, i1, i2);
 
-            //printf("%10lld%10lld %s\n", i1, i2, str1);
-            //printf("%20s\n", str1);
-
-            que->Add(str1, ALPHA);
+            que->Add(str1);
 
             i = i2 - 1;
 
@@ -321,9 +342,7 @@ void Parse(char* str, CQueue* que)
 
             GetString(str1, 100, str, i1, i2);
 
-            //printf("%20s\n", str1);
-
-            que->Add(str1, SIGN);
+            que->Add(str1);
 
             i = i2 - 1;
         }
@@ -334,9 +353,7 @@ void Parse(char* str, CQueue* que)
 
             GetString(str1, 100, str, i1, i2);
 
-            //printf("%20s\n", str1);
-
-            que->Add(str1, EQUAL);
+            que->Add(str1);
 
             i = i2 - 1;
         }
@@ -357,7 +374,11 @@ void Parse(char* str, CQueue* que)
 bool CheckForArrangement(CQueue* que)
 {
     NODE* Node;
+    char number[12], alpha[53];
     bool validN, validA, validS, validE;
+
+    strcpy_s(number, 12, "1234567890.");
+    strcpy_s(alpha, 53, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
 
     validN = true;      // 12
     validA = true;      // x
@@ -368,9 +389,7 @@ bool CheckForArrangement(CQueue* que)
 
     while (que->Read(&Node)) {
 
-        switch (Node->token) {
-
-        case NUMBER:
+        if (strchr(number, Node->str[0]) != NULL) {
 
             if (!validN) return true;
 
@@ -379,9 +398,8 @@ bool CheckForArrangement(CQueue* que)
             validS = true;      // 12 +
             validE = true;      // 12 =
 
-            break;
-
-        case ALPHA:
+        }
+        else if (strchr(alpha, Node->str[0]) != NULL) {
 
             if (!validA) return true;
 
@@ -390,9 +408,8 @@ bool CheckForArrangement(CQueue* que)
             validS = true;      // x +
             validE = true;      // x =
 
-            break;
-
-        case SIGN:
+        }
+        else if (Node->str[0] == '+' || Node->str[0] == '-') {
 
             if (!validS) return true;
 
@@ -401,18 +418,15 @@ bool CheckForArrangement(CQueue* que)
             validS = false;     // - +
             validE = false;     // - =
 
-            break;
+        }
+        else if (Node->str[0] == '=') {
 
-        case EQUAL:
- 
             if (!validE) return true;
 
             validN = true;      // = 34
             validA = true;      // = x
             validS = true;      // = +
             validE = false;     // = =
-
-            break;
 
         }
     }
@@ -432,7 +446,7 @@ bool CheckForEqual(CQueue* que)
 
     while (que->Read(&Node)) {
 
-        if (Node->token == EQUAL)
+        if (Node->str[0] == '=')
             ++count;
     }
 
@@ -444,7 +458,10 @@ bool CheckForVariable(CQueue* que)
 {
     CQueue que1;
     NODE* Node;
+    char alpha[53];
     bool result;
+
+    strcpy_s(alpha, 53, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
 
     result = false;
 
@@ -452,13 +469,13 @@ bool CheckForVariable(CQueue* que)
 
     while (que->Read(&Node)) {
 
-        if (Node->token == ALPHA) {
+        if (strchr(alpha, Node->str[0]) != NULL) {
             if (que1.Find(Node->str)) {
                 result = true;
                 break;
-            } 
+            }
             else {
-                que1.Add(Node->str, Node->token);
+                que1.Add(Node->str);
             }
         }
     }
@@ -471,7 +488,11 @@ bool CheckForConstant(CQueue* que)
 {
     NODE* Node1;
     NODE* Node2;
+    char number[12], alpha[53];
     int count;
+
+    strcpy_s(number, 12, "1234567890.");
+    strcpy_s(alpha, 53, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
 
     count = 0;
 
@@ -479,13 +500,13 @@ bool CheckForConstant(CQueue* que)
 
     while (que->Read(&Node1)) {
 
-        if (Node1->token == NUMBER) {
+        if (strchr(number, Node1->str[0]) != NULL) {
 
             Node2 = Node1->Next;
 
             if (Node2 != NULL) {
 
-                if (Node2->token == ALPHA) continue;
+                if (strchr(alpha, Node2->str[0]) != NULL) continue;
 
                 ++count;
 
@@ -518,7 +539,10 @@ bool CheckForConstant(CQueue* que)
 void CollectVariable(CQueue* que1, int n, CQueue* que2)
 {
     NODE* Node;
+    char alpha[53];
     int i;
+
+    strcpy_s(alpha, 53, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
 
     for (i = 0; i < n; i++) {
 
@@ -526,10 +550,10 @@ void CollectVariable(CQueue* que1, int n, CQueue* que2)
 
         while (que1[i].Read(&Node)) {
 
-            if (Node->token == ALPHA) {
+            if (strchr(alpha, Node->str[0]) != NULL) {
 
                 if (!que2->Find(Node->str)) {
-                    que2->Add(Node->str, Node->token);
+                    que2->Add(Node->str);
                 }
             }
         }
@@ -545,11 +569,11 @@ void CollectVariable(CQueue* que1, int n, CQueue* que2)
 // var[0]                 x
 // var[1]                 y
 //
-void CreateVariable(char*** var, CQueue* que)
+void ConvertToArray(char*** var, CQueue* que)
 {
     int i, n;
     size_t size;
-    char str[100];
+    char* str;
 
     n = que->GetCount();
     *var = new char* [n];
@@ -558,7 +582,7 @@ void CreateVariable(char*** var, CQueue* que)
 
     while (!que->IsEmpty()) {
 
-        que->Remove(str, 100);
+        que->Remove(&str);
 
         size = strlen(str) + 1;
         (*var)[i] = new char[size];
@@ -566,6 +590,8 @@ void CreateVariable(char*** var, CQueue* que)
         strcpy_s((*var)[i], size, str);
 
         ++i;
+
+        delete[] str;
     }
 }
 
@@ -582,18 +608,22 @@ void CreateVariable(char*** var, CQueue* que)
 // a                      2   -1   34
 //                        1    1    1
 //
-void CreateMatrix(CQueue* que, char** var, int* m, int n, double*** a)
+void ConvertToArray(CQueue* que, char** var, int* m, int n, double*** a)
 {
-    NODE* Node;
     int i, j;
     double num, sign, toggle;
     bool numfound;
+    char number[12], alpha[53];
+    char* str;
+
+    strcpy_s(number, 12, "1234567890.");
+    strcpy_s(alpha, 53, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
 
     // allocate
     *a = new double* [n];
     *m = n + 1;
 
-    for (i=0; i<n; i++)
+    for (i = 0; i < n; i++)
         (*a)[i] = new double[*m];
 
     // initialize
@@ -608,26 +638,23 @@ void CreateMatrix(CQueue* que, char** var, int* m, int n, double*** a)
         numfound = false;
         num = sign = toggle = 1.0;
 
-        que[i].Reset();
+        while (!que[i].IsEmpty()) {
 
-        while (que[i].Read(&Node)) {
+            que[i].Remove(&str);
 
-            switch (Node->token) {
-
-            case NUMBER:
+            if (strchr(number, str[0]) != NULL) {
 
                 // kung number kunin lang ang number
 
-                num = atof(Node->str);
+                num = atof(str);
                 numfound = true;
 
-                break;
-
-            case ALPHA:
+            }
+            else if (strchr(alpha, str[0]) != NULL) {
 
                 // kung variable ang sumunod ilagay ang number na nakuha, kung meron, sa matrix sa tamang location
 
-                j = FindIndex(var, n, Node->str);
+                j = FindIndex(var, n, str);
 
                 if (numfound)
                     (*a)[i][j] = toggle * sign * num;
@@ -637,9 +664,8 @@ void CreateMatrix(CQueue* que, char** var, int* m, int n, double*** a)
                 numfound = false;
                 num = sign = 1.0;
 
-                break;
-
-            case SIGN:
+            }
+            else if (str[0] == '+' || str[0] == '-') {
 
                 // kung sign ang sumunod ilagay ang number na nakuha, kung meron, sa matrix sa tamang location
                 // ito ay ang constant sa equation
@@ -652,16 +678,15 @@ void CreateMatrix(CQueue* que, char** var, int* m, int n, double*** a)
 
                 // kung sign kunin ang sign, positive o negative, ang zero ay para lang sa error checking
 
-                if (Node->str[0] == '+')
+                if (str[0] == '+')
                     sign = 1.0;
-                else if (Node->str[0] == '-')
+                else if (str[0] == '-')
                     sign = -1.0;
                 else
                     sign = 0.0;
 
-                break;
-
-            case EQUAL:
+            }
+            else if (str[0] == '=') {
 
                 // kung equal ang sumunod ilagay ang number na nakuha, kung meron, sa matrix sa tamang location
                 // ito ay ang constant sa equation
@@ -675,9 +700,9 @@ void CreateMatrix(CQueue* que, char** var, int* m, int n, double*** a)
                 num = sign = 1.0;
                 toggle = -1.0;
 
-                break;
-
             }
+
+            delete[] str;
         }
 
         // kung huli na 'to, ilagay ang number na nakuha, kung meron, sa matrix sa tamang location
