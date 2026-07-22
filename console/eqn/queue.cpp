@@ -42,14 +42,12 @@ bool CQueue::IsEmpty()
 //     |    |--->|    |--->|    |--->|    |--->|    |--->|    |---> NULL          |    |---> NULL
 //     +----+    +----+    +----+    +----+    +----+    +----+                   +----+
 //
-void CQueue::Add(char* str, Token token)
+void CQueue::Add(char* str)
 {
 	NODE* Node;
 	size_t n;
 
 	Node = new NODE;
-
-	Node->token = token;
 
 	n = strlen(str) + 1;
 	Node->str = new char[n];
@@ -77,12 +75,16 @@ void CQueue::Add(char* str, Token token)
 //     |    |--->          |    |--->|    |--->|    |--->|    |--->|    |--->|    |---> NULL
 //     +----+              +----+    +----+    +----+    +----+    +----+    +----+
 //
-void CQueue::Remove(char* str, int n)
+void CQueue::Remove(char** str)
 {
 	NODE* Node;
+	size_t n;
 
 	Node = First;
-	strcpy_s(str, n, Node->str);
+
+	n = strlen(Node->str) + 1;
+	*str = new char[n];
+	strcpy_s(*str, n, Node->str);
 
 	First = First->Next;
 	Count--;
@@ -139,8 +141,10 @@ bool CQueue::Find(char* str)
 
 void CQueue::Clear()
 {
-	char str[100];
+	char* str;
 
-	while (!IsEmpty())
-		Remove(str, 100);
+	while (!IsEmpty()) {
+		Remove(&str);
+		delete[] str;
+	}
 }
