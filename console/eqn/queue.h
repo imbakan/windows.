@@ -1,21 +1,18 @@
 
 #pragma once
 
-enum Token { NUMBER, ALPHA, SIGN, EQUAL };
-
 typedef struct NODE NODE;
 
 struct NODE
 {
 	char* str;
-	Token token;
 	NODE* Next;
 };
 
 class CQueue
 {
 private:
-	NODE* First, * Last, *Pointer;
+	NODE* First, * Last, * Pointer;
 	int Count;
 
 	void CapString(char* str);
@@ -26,8 +23,8 @@ public:
 
 	int GetCount();
 	bool IsEmpty();
-	void Add(char* str, Token token);
-	void Remove(char* str, int n);
+	void Add(char* str);
+	void Remove(char** str);
 
 	void Reset();
 	bool Read(NODE** Node);
