@@ -1,31 +1,24 @@
 
-#include<stdlib.h>
-#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "queue.h"
 
-// constructor
 CQueue::CQueue()
 {
 	First = Last = NULL;
 	Count = 0;
 }
 
-// destructor
 CQueue::~CQueue()
 {
-	CItem item;
-
-	while (!IsEmpty())
-		Remove(&item);
+	Clear();
 }
 
-//
 int CQueue::GetCount()
 {
 	return Count;
 }
 
-//
 bool CQueue::IsEmpty()
 {
 	return (Count == 0);
@@ -38,12 +31,17 @@ bool CQueue::IsEmpty()
 //     |    |--->|    |--->|    |--->|    |--->|    |--->|    |---> NULL          |    |---> NULL
 //     +----+    +----+    +----+    +----+    +----+    +----+                   +----+
 //
-void CQueue::Add(CItem item)
+void CQueue::Add(char* str)
 {
-	NODE_Q* Node;
+	QUEUE* Node;
+	size_t n;
 
-	Node = new NODE_Q;
-	Node->item = item;
+	Node = new QUEUE;
+
+	n = strlen(str) + 1;
+	Node->str = new char[n];
+	strcpy_s(Node->str, n, str);
+
 	Node->Next = NULL;
 
 	if (IsEmpty())
@@ -66,12 +64,16 @@ void CQueue::Add(CItem item)
 //     |    |--->          |    |--->|    |--->|    |--->|    |--->|    |--->|    |---> NULL
 //     +----+              +----+    +----+    +----+    +----+    +----+    +----+
 //
-void CQueue::Remove(CItem* item)
+void CQueue::Remove(char** str)
 {
-	NODE_Q* Node;
+	QUEUE* Node;
+	size_t n;
 
 	Node = First;
-	*item = Node->item;
+
+	n = strlen(Node->str) + 1;
+	*str = new char[n];
+	strcpy_s(*str, n, Node->str);
 
 	First = First->Next;
 	Count--;
@@ -79,5 +81,32 @@ void CQueue::Remove(CItem* item)
 	if (IsEmpty())
 		Last = First;
 
+	delete[] Node->str;
 	delete Node;
+}
+
+void CQueue::Reset()
+{
+	Pointer = First;
+}
+
+bool CQueue::Read(QUEUE** Node)
+{
+	if (Pointer == NULL) return false;
+
+	*Node = Pointer;
+
+	Pointer = Pointer->Next;
+
+	return true;
+}
+
+void CQueue::Clear()
+{
+	char* str;
+
+	while (!IsEmpty()) {
+		Remove(&str);
+		delete[] str;
+	}
 }
