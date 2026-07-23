@@ -1,20 +1,18 @@
 
-#include "item.h"
-
 #pragma once
 
-typedef struct NODE_S NODE_S;
+typedef struct STACK STACK;
 
-struct NODE_S
+struct STACK
 {
-	CItem item;
-	NODE_S* Next;
+	char* str;
+	STACK* Next;
 };
 
 class CStack
 {
 private:
-	NODE_S* First;
+	STACK* First, *Pointer;
 	int Count;
 
 public:
@@ -23,9 +21,14 @@ public:
 
 	int GetCount();
 	bool IsEmpty();
-	void Push(CItem item);
-	void Pop(CItem* item);
+	void Push(char* str);
+	void Pop(char** str);
 
-	void Peek(CItem* item);
+	void Peek(char** str);
+
+	void Reset();
+	bool Read(STACK** Node);
+
+	void Clear();
 };
 
