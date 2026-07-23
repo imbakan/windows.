@@ -1,20 +1,18 @@
 
-#include "item.h"
-
 #pragma once
 
-typedef struct NODE_Q NODE_Q;
+typedef struct QUEUE QUEUE;
 
-struct NODE_Q
+struct QUEUE
 {
-	CItem item;
-	NODE_Q* Next;
+	char* str;
+	QUEUE* Next;
 };
 
 class CQueue
 {
 private:
-	NODE_Q* First, * Last;
+	QUEUE* First, * Last, * Pointer;
 	int Count;
 
 public:
@@ -23,7 +21,12 @@ public:
 
 	int GetCount();
 	bool IsEmpty();
-	void Add(CItem item);
-	void Remove(CItem* item);
+	void Add(char* str);
+	void Remove(char** str);
+
+	void Reset();
+	bool Read(QUEUE** Node);
+
+	void Clear();
 };
 
