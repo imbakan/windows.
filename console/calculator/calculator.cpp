@@ -1,329 +1,616 @@
-//
-// calculator
-//
 
-#include <windows.h>
-#include <stdlib.h>
+// calculator
+
 #include <stdio.h>
-#include <conio.h>
 #include <string.h>
 #include <math.h>
 #include "queue.h"
 #include "stack.h"
+#include "stack2.h"
 
-bool IsOperator(char ch);
-bool IsOperand(char ch);
+const int LEFT_TO_RIGHT = 1001;
+const int RIGHT_TO_LEFT = 1002;
 
-void GetOperator(char* str, size_t* i, char* operetor);
-void GetOperand(char* str, size_t* i, double* operand);
+void PrintOutput(CQueue* que);
+void PrintOutput(CStack* stc, CQueue* que);
 
-void PrecedenceLT(CItem item1, CQueue* queue, CStack* stack);
-void PrecedenceGT(CItem item1, CQueue* queue, CStack* stack);
-void PrecedenceEQ(CItem item1, CQueue* queue, CStack* stack);
+int precedence(char ch);
+int associativity(char ch);
 
-void Parse(char* str, CQueue* queue);
-void InfixToPosfix(CQueue* queue1, CQueue* queue2);
+void GetNumber(char* str, size_t i1, size_t* i2);
+void GetString(char* str1, size_t n, char* str2, size_t i1, size_t i2);
+
+void Parse(char* str, CQueue* que);
+bool CheckForArrangement(CQueue* que);
+void InfixToPosfix(CQueue* que, CQueue* que2);
+
 double DoTheMath(CQueue* queue);
 
 int main()
 {
-    char ch, str[300];
-    CQueue infix, posfix;
-    double result;
-
-    // iset ang title ng console
-    SetConsoleTitle(L"Calculator");
+    CQueue que1, que2;
+    char str[200];
+    double a;
 
     printf("\n");
+    printf("Calculator\n");
+    printf("\n");
+    printf("Type mathematical operation to perform calculation.\n");
+    printf("Type 'Q' or 'q' to exit.\n");
+    printf("\n");
 
-    ch = 'Y';
+    while (true) {
 
-    while (ch == 'Y' || ch == 'y') {
+        gets_s(str, 200);
 
-        printf("Enter mathematical expression: ");
-        gets_s(str, 300);
+        if (strcmp(str, "Q") == 0 || strcmp(str, "q") == 0) break;
 
-        Parse(str, &infix);
-        InfixToPosfix(&infix, &posfix);
-        result = DoTheMath(&posfix);
+        Parse(str, &que1);
 
-        printf("%f\n", result);
-
-        // ulitin
-        printf("\nContinue (y/n)?");
-
-        do {
-            ch = _getch();
-        } while (!(ch == 'Y' || ch == 'y' || ch == 'N' || ch == 'n'));
-
-        printf((ch == 'Y' || ch == 'y') ? "y\n\n" : "n\n");
-    }
-}
-
-// alamin kung ang character ch ay operator
-bool IsOperator(char ch)
-{
-    char str[10];
-    char* p;
-
-    strcpy_s(str, 10, "/*-+^()");
-    p = strchr(str, ch);
-
-    return (p != NULL);
-}
-
-// alamin kung ang character ch ay operand
-bool IsOperand(char ch)
-{
-    char str[12];
-    char* p;
-
-    strcpy_s(str, 12, "0123456789.");
-    p = strchr(str, ch);
-
-    return (p != NULL);
-}
-
-// kunin ang operator sa string str na nagsisimula sa index i
-// ilagay ang nakuha sa variable operetor
-void GetOperator(char* str, size_t* i, char* operetor)
-{
-    *operetor = str[*i];
-    ++(*i);
-}
-
-// kunin ang operand sa string str na nagsisimula sa index i
-// ilagay ang nakuha sa variable operand
-void GetOperand(char* str, size_t* i, double* operand)
-{
-    char str1[12], str2[100];
-    size_t j, k;
-
-    strcpy_s(str1, 12, "0123456789.");
-
-    k = *i;
-    j = 0;
-
-    while (strchr(str1, str[k]) != NULL) {
-
-        str2[j] = str[k];
-
-        ++j;
-        ++k;
-    }
-
-    str2[j] = '\0';
-
-    *i = k;
-
-    *operand = atof(str2);
-}
-
-// function kung ang precedence ng operator ay mas mababa kay sa nasa stack
-// ipop ang operator na nasa stack, tapos iadd sa queue
-// itest ang precedence ng susunod na item na nasa stack
-// pagkatapos matest ang lahat na item na nasa stack, ipush ang operator sa stack
-void PrecedenceLT(CItem item1, CQueue* queue, CStack* stack)
-{
-    CItem item;
-
-    while (!stack->IsEmpty()) {
-
-        stack->Peek(&item);
-
-        if (item1 < item) {
-            
-            stack->Pop(&item);
-            queue->Add(item);
+        if (CheckForArrangement(&que1)) {
+            printf("Invalid mathematical operations.\n");
         }
-        else if (item1 > item) {          
-            PrecedenceGT(item1, queue, stack);
-        }
-        else {           
-            PrecedenceEQ(item1, queue, stack);
+        else {
+
+            InfixToPosfix(&que1, &que2);
+
+            //PrintOutput(&que2);
+
+            a = DoTheMath(&que2);
+
+            printf("%25.15f\n", a);
         }
     }
 }
 
-// function kung ang precedence ng operator ay mas mataas kay sa nasa stack
-// ipush ang operator sa stack
-void PrecedenceGT(CItem item1, CQueue* queue, CStack* stack)
+void PrintOutput(CQueue* que)
 {
+    QUEUE* Node;
+
+    que->Reset();
+
+    while (que->Read(&Node))
+        printf("%s ", Node->str);
+
+    printf("\n");
 }
 
-// function kung ang precedence ng operator ay kapareho ng nasa stack
-// kung left to right, ipop ang operator na nasa stack, tapos iadd sa queue
-// kung right to left, ipush ang operator sa stack
-void PrecedenceEQ(CItem item1, CQueue* queue, CStack* stack)
+void PrintOutput(CStack* stc, CQueue* que)
 {
-    CItem item;
+    STACK* Node1;
+    QUEUE* Node2;
+    int i, n;
 
-    if (item1 == LEFT_TO_RIGHT) {
+    n = 20 - stc->GetCount();
 
-        stack->Pop(&item);
-        queue->Add(item);
+    stc->Reset();
 
-    }
-    else if (item1 == RIGHT_TO_LEFT) {
-    }
+    while (stc->Read(&Node1))
+        printf("%s ", Node1->str);
+
+    for (i = 0; i < n; i++)
+        printf("  ");
+
+    que->Reset();
+
+    while (que->Read(&Node2))
+        printf("%s ", Node2->str);
+
+    printf("\n");
 }
 
-// kunin ang  operand at operator ng string str
-// ilagay ang mga nakuha sa variable queue
-void Parse(char* str, CQueue* queue)
+int precedence(char ch)
+{
+    int value;
+
+    value = 0;
+
+    switch (ch) {
+    case '(':
+    case ')': value = 99; break;
+    case '^': value = 3; break;
+    case '*':
+    case '/': value = 2; break;
+    case '+':
+    case '-': value = 1; break;
+    }
+
+    return value;
+}
+
+int associativity(char ch)
+{
+    int value;
+
+    value = 0;
+
+    switch (ch) {
+    case '(':
+    case ')':; break;/**/
+    case '^': value = RIGHT_TO_LEFT; break;/* R - L */
+    case '*':
+    case '/': value = LEFT_TO_RIGHT; break;/* L - R */
+    case '+':
+    case '-': value = LEFT_TO_RIGHT; break;/* L - R */
+    }
+
+    return value;
+}
+// kunin ang index i1 at i2 ng string str
+// ang index i1 ay ang simula ng numeric character
+// ang index i2 ay index ng huling numeric character plus one
+// 
+// abcd12345efg67890
+//     ^    ^
+//     |    |
+//     i1   i2
+//
+void GetNumber(char* str, size_t i1, size_t* i2)
 {
     size_t i, n;
-    char operetor;
-    double operand;
-    CItem item;
+    char number[12];
+    bool found;
 
-    i = 0;
+    strcpy_s(number, 12, "1234567890.");
+
     n = strlen(str);
+    found = false;
+
+    for (i = i1; i < n; i++) {
+
+        if (strchr(number, str[i]) == NULL) {
+            *i2 = i;
+            found = true;
+            break;
+        }
+    }
+
+    if (found) return;
+
+    *i2 = n;
+}
+
+// kunin ang string str1 sa string str2 sa pagitan ng index i1 at i2
+void GetString(char* str1, size_t n, char* str2, size_t i1, size_t i2)
+{
+    size_t i, k;
+
+    k = 0;
+
+    for (i = i1; i < i2; i++)
+        str1[k++] = str2[i];
+
+    str1[k] = '\0';
+}
+
+// ilagay sa que ang mga term ng operation str
+//
+// operation             ((10 + 20) - 30) * 40 / 50
+//
+//                        +---+    +---+    +----+    +---+    +----+    +---+    +---+    +----+    +---+    +---+    +----+    +---+    +----+
+// que                    | ( |--->| ( |--->| 10 |--->| + |--->| 20 |--->| ) |--->| - |--->| 30 |--->| ) |--->| * |--->| 40 |--->| / |--->| 50 |
+//                        +---+    +---+    +----+    +---+    +----+    +---+    +---+    +----+    +---+    +---+    +----+    +---+    +----+
+//
+void Parse(char* str, CQueue* que)
+{
+    size_t i, i1, i2, n;
+    char number[12], operators[8], str1[100];
+
+    strcpy_s(number, 12, "1234567890.");
+    strcpy_s(operators, 8, "+-*/()^");
+
+    n = strlen(str);
+    i = 0;
 
     while (i < n) {
 
-        if (IsOperator(str[i])) {
-            GetOperator(str, &i, &operetor);
-            item = operetor;
-            queue->Add(item);
+        if (strchr(number, str[i]) != NULL) {
+
+            i1 = i;
+
+            GetNumber(str, i1, &i2);
+            GetString(str1, 100, str, i1, i2);
+
+            que->Add(str1);
+
+            i = i2 - 1;
+
         }
-        else if (IsOperand(str[i])) {
-            GetOperand(str, &i, &operand);
-            item = operand;
-            queue->Add(item);
+        else if (strchr(operators, str[i]) != NULL) {
+
+            i1 = i;
+            i2 = i + 1;
+
+            GetString(str1, 100, str, i1, i2);
+
+            que->Add(str1);
+
+            i = i2 - 1;
+        }
+        else if (str[i] == ' ') {
+            // ignore
         }
         else {
-            ++i;
+
+            printf("invalid character\n");
+            break;
         }
+
+        ++i;
     }
 }
 
-// gawing posfix ang infix
-//
-// infix          posfix
-// A + B          A B +
-// queue1         queue2
-//
-void InfixToPosfix(CQueue* queue1, CQueue* queue2)
+// true - failed
+// false - passed
+bool CheckForArrangement(CQueue* que)
+{
+    QUEUE* Node;
+    int count;
+    char numbers[12];
+    bool NotNumNext, NotPMNext, NotMDNext, NotOPNext, NotCPNext, NotEXNext;
+
+    strcpy_s(numbers, 12, "1234567890.");
+
+    NotNumNext = false;     // 5
+    NotPMNext = false;      // +
+    NotMDNext = true;       // *
+    NotOPNext = false;      // (
+    NotCPNext = true;       // )
+    NotEXNext = true;       // ^
+
+    count = 0;
+
+    que->Reset();
+
+    while (que->Read(&Node)) {
+
+        if (strchr(numbers, Node->str[0]) != NULL) {
+
+            //printf("%s\n", Node->str);
+
+            if (NotNumNext) return true;
+
+            NotNumNext = true;      // 5 5
+            NotPMNext = false;      // 5 +
+            NotMDNext = false;      // 5 *
+            NotOPNext = true;       // 5 (
+            NotCPNext = false;      // 5 )
+            NotEXNext = false;      // 5 ^
+        }
+        else if (Node->str[0] == '+' || Node->str[0] == '-') {
+
+            //printf("%c\n", Node->str[0]);
+
+            if (NotPMNext) return true;
+
+            NotNumNext = false;     // + 5
+            NotPMNext = true;       // + +
+            NotMDNext = true;       // + *
+            NotOPNext = false;      // + (
+            NotCPNext = true;       // + )
+            NotEXNext = true;       // + ^
+
+        }
+        else if (Node->str[0] == '*' || Node->str[0] == '/' || Node->str[0] == '^') {
+
+            //printf("%c\n", Node->str[0]);
+
+            if (NotMDNext) return true;
+
+            NotNumNext = false;     // * 5
+            NotPMNext = true;       // * +
+            NotMDNext = true;       // * *
+            NotOPNext = false;      // * (
+            NotCPNext = true;       // * )
+            NotEXNext = true;       // * ^
+        }
+        else if (Node->str[0] == '(') {
+
+            //printf("%c\n", Node->str[0]);
+
+            if (NotOPNext) return true;
+
+            NotNumNext = false;     // ( 5
+            NotPMNext = false;      // ( +
+            NotMDNext = true;       // ( *
+            NotOPNext = false;      // ( (
+            NotCPNext = true;       // ( )
+            NotEXNext = true;       // ( ^
+
+            ++count;
+
+        }
+        else if (Node->str[0] == ')') {
+
+            //printf("%c\n", Node->str[0]);
+
+            if (NotCPNext) return true;
+
+            NotNumNext = true;      // ) 5
+            NotPMNext = false;      // ) +
+            NotMDNext = false;      // ) *
+            NotOPNext = true;       // ) (
+            NotCPNext = false;      // ) )
+            NotEXNext = false;      // ) ^
+
+            --count;
+        }
+        else {
+
+            //printf("character error\n");
+
+            return true;
+        }
+    }
+
+    if (count != 0) return true;
+
+    return false;
+}
+
+// 3.5 Infix to Postfix Conversion Rules using Stack | Data structures Tutorials
+// https://www.youtube.com/watch?v=TB7qzDgX-pI
+void InfixToPosfix(CQueue* que1, CQueue* que2)
 {
     CStack stack;
-    CItem item, item1, item2;
+    char numbers[12], operators[6];
+    char* str1;
+    char* str2;
+    char* str3;
+    char* str4;
 
-    // isa-isahin ang bawat item na nasa infix
-    while (!queue1->IsEmpty()) {
+    strcpy_s(numbers, 12, "1234567890.");
+    strcpy_s(operators, 6, "+-*/^");
 
-        // kunin ang item 1 na nasa infix
-        queue1->Remove(&item1);
+    while (!que1->IsEmpty()) {
 
-       //printf("[%s]\n", (char*)item1);
+        que1->Remove(&str1);
 
-        if (item1 == OPERAND) {
+        //printf("%s\n", str1);
 
-            // kung ang item 1 ay operand iadd 'to sa queue
-            queue2->Add(item1);
+        if (strchr(numbers, str1[0]) != NULL) {
+
+            // 1. Print operands as they arrive.
+
+            que2->Add(str1);
+
         }
-        else if (item1 == OPERATOR) {
+        else if (strchr(operators, str1[0]) != NULL) {
 
-            // kung ang item 1 ay operator gawin ang mga ito:
+            if (stack.IsEmpty()) {
 
-            if (item1 == '(') {
-                
-                // kung open parenthesis, gawin uli ang function na 'to
-                InfixToPosfix(queue1, queue2);
-            }
-            else if (item1 == ')') {
-                
-                // kung close parenthesis, mag exit sa function na 'to
-                break;
-            }
-            else if (stack.IsEmpty()) {
+                // 2.1 If stack is empty,
+                //     push the incomming operator onto the stack.
 
-                // kung walang laman ang stack, ipush ang operator sa stack
-                stack.Push(item1);
+                stack.Push(str1);
             }
             else {
 
-                // kung may laman ang stack, itest ang precedence nito
-                stack.Peek(&item2);
+                stack.Peek(&str2);
 
-                if (item1 < item2) {
+                if (str2[0] == '(') {
 
-                    // kung ang precedence ng operator ay mas mababa kay sa nasa stack
-                    PrecedenceLT(item1, queue2, &stack);
+                    // 2.2 If stack contains a left parethesis on top,
+                    //     push the incomming operator onto the stack.
+
+                    stack.Push(str1);
                 }
-                else if (item1 > item2) {
+                else if (precedence(str1[0]) > precedence(str2[0])) {
 
-                    // kung ang precedence ng operator ay mas mataas kay sa nasa stack
-                    PrecedenceGT(item1, queue2, &stack);
+                    // 5. If incomming symbol has higher precedence than the top of the stack,
+                    //    push it onto the stack.
+
+                    stack.Push(str1);
                 }
-                else {
+                else if (precedence(str1[0]) < precedence(str2[0])) {
 
-                    // kung ang precedence ng operator ay kapareho ng nasa stack
-                    PrecedenceEQ(item1, queue2, &stack);
+                    // 6. If incomming symbol has lower precedence than the top of the stack,
+                    //    pop and print the top. Then test the incomming operator against the new top of the stack. ????????????????????????????
+
+                    stack.Pop(&str3);
+                    que2->Add(str3);
+                    delete[] str3;
+
+                    while (!stack.IsEmpty()) {
+
+                        stack.Peek(&str4);
+
+                        if (precedence(str1[0]) > precedence(str4[0])) {
+                            break;
+                        }
+                        else if (precedence(str1[0]) < precedence(str4[0])) {
+
+                            stack.Pop(&str3);
+                            que2->Add(str3);
+                            delete[] str3;
+                        }
+                        else if (precedence(str1[0]) == precedence(str4[0])) {
+
+                            if (associativity(str1[0]) == LEFT_TO_RIGHT) {
+
+                                stack.Pop(&str3);
+                                que2->Add(str3);
+                                delete[] str3;
+
+                            }
+                            else if (associativity(str1[0]) == RIGHT_TO_LEFT) {
+                                break;
+                            }
+                        }
+                    }
+
+                    stack.Push(str1);
+                }
+                else if (precedence(str1[0]) == precedence(str2[0])) {
+
+                    // 7. If incomming symbol has equal precedence with the top of the stack,
+                    //    use associativity rule
+
+                    if (associativity(str1[0]) == LEFT_TO_RIGHT) {
+
+                        // If associativity is Left to Right
+                        // then pop and print the top of the stack and then push the incomming operator
+
+                        stack.Pop(&str3);
+                        que2->Add(str3);
+                        delete[] str3;
+
+                        stack.Push(str1);
+
+                    }
+                    else if (associativity(str1[0]) == RIGHT_TO_LEFT) {
+
+                        // If associativity is Right to Left
+                        // then push the incoming operator
+
+                        stack.Push(str1);
+                    }
                 }
 
-                // ito ay common sa PrecedenceLT, PrecedenceGT at PrecedenceEQ function
-                // kaya inilagay ko dito
-                stack.Push(item1);
             }
         }
+        else if (str1[0] == '(') {
+
+            // 3. If incomming symbol is '(',
+            //    push it onto stack.
+
+            stack.Push(str1);
+        }
+        else if (str1[0] == ')') {
+
+            // 4. If incomming symbol is ')',
+            //    pop the stack and print the operator until left parenthesis is found.
+
+            while (!stack.IsEmpty()) {
+
+                stack.Pop(&str3);
+
+                if (str3[0] == '(') {
+                    delete[] str3;
+                    break;
+                }
+
+                que2->Add(str3);
+
+                delete[] str3;
+            }
+        }
+
+        //PrintOutput(&stack, que2);
+
+        delete[] str1;
     }
 
-    // iadd ang natitirang laman ng stack sa queue 2
+    // 8. At the end of the expression, pop and print all operators of stack
+
     while (!stack.IsEmpty()) {
 
-        stack.Pop(&item);
-        queue2->Add(item);
+        stack.Pop(&str3);
+        que2->Add(str3);
+        delete[] str3;
     }
+
+    //PrintOutput(&stack, que2);
 }
 
-// reverse polish notation
-double DoTheMath(CQueue* queue)
+// Reverse Polish Notationand The Stack - Computerphile
+// https://www.youtube.com/watch?v=7ha78yWRDlE
+double DoTheMath(CQueue* que)
 {
-    CItem item, item1, item2, item3;
-    CStack stack;
-    double result = 0.0;
+    CStack2 stack;
+    double a, b, c;
+    char numbers[12], operators[6];
+    char* str;
 
-    // isa-isahin ang bawat item na nasa posfix
-    while (!queue->IsEmpty()) {
+    strcpy_s(numbers, 12, "1234567890.");
+    strcpy_s(operators, 6, "+-*/^");
 
-        // kunin ang item na nasa posfix
-        queue->Remove(&item);
+    while (!que->IsEmpty()) {
 
-        if (item == OPERAND) {
+        que->Remove(&str);
 
-            // kung ang item ay operand, ipush 'to sa stack
-            stack.Push(item);
+        //printf("%s\n", str);
+
+        if (strchr(numbers, str[0]) != NULL) {
+
+            // kung operand iadd sa queue
+            a = atof(str);
+            stack.Push(a);
         }
-        else if (item == OPERATOR) {
+        else if (strchr(operators, str[0]) != NULL) {
 
-            // kung ang item ay operator
-            // ipop ang operand na nasa stack
-            // gamitin ang operand at operator sa computation
-            // ipush ang resulta sa stack
-            stack.Pop(&item2);
-            stack.Pop(&item1);
+            // kung operator gawin ang mga ito:
+            // kunin ang kailangang operand sa queue at gamitin ito sa operator
 
-            switch (item) {
-            case '+': item3 = item1 + item2;    break;
-            case '-': item3 = item1 - item2;    break;
-            case '*': item3 = item1 * item2;    break;
-            case '/': item3 = item1 / item2;    break;
-            case '^': item3 = item1 ^ item2;    break;
+            switch (str[0]) {
+
+            case '+':
+
+                stack.Pop(&b);
+                stack.Pop(&a);
+
+                c = a + b;
+
+                stack.Push(c);
+
+                break;
+
+            case '-':
+
+                stack.Pop(&b);
+                stack.Pop(&a);
+
+                c = a - b;
+
+                stack.Push(c);
+
+                break;
+
+            case '*':
+
+                stack.Pop(&b);
+                stack.Pop(&a);
+
+                c = a * b;
+
+                stack.Push(c);
+
+                break;
+
+            case '/':
+
+                stack.Pop(&b);
+                stack.Pop(&a);
+
+                c = a / b;
+
+                stack.Push(c);
+
+                break;
+
+            case '^':
+
+                stack.Pop(&b);
+                stack.Pop(&a);
+
+                c = pow(a, b);
+
+                stack.Push(c);
+
+                break;
+
             }
-
-            stack.Push(item3);
         }
+
+        delete[] str;
     }
 
-    // ipop ang natitirang isang laman ng stack, ito ang resulta ng computation
-    if (stack.GetCount() > 1) {
+    c = 0.0;
+
+    if (stack.GetCount() > 1)
         printf("... error ...\n");
-    }
-    else {
-        stack.Pop(&item);
-        result = (double)item;
-    }
+    else
+        stack.Pop(&c);
 
-    return result;
+    return c;
 }
