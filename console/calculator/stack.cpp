@@ -1,22 +1,17 @@
 
-#include<stdlib.h>
-#include<stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "stack.h"
 
-// constructor
 CStack::CStack()
 {
 	First = NULL;
 	Count = 0;
 }
 
-// destructor
 CStack::~CStack()
 {
-	CItem item;
-
-	while (!IsEmpty())
-		Pop(&item);
+	Clear();
 }
 
 //
@@ -31,7 +26,6 @@ bool CStack::IsEmpty()
 	return (Count == 0);
 }
 
-// magdagdag ng node sa ibabaw ng list
 // 
 //     +-----+
 //     |     |  Node     |
@@ -57,12 +51,17 @@ bool CStack::IsEmpty()
 //        V
 //       NULL
 //
-void CStack::Push(CItem item)
+void CStack::Push(char* str)
 {
-	NODE_S* Node;
+	STACK* Node;
+	size_t n;
 
-	Node = new NODE_S;
-	Node->item = item;
+	Node = new STACK;
+
+	n = strlen(str) + 1;
+	Node->str = new char[n];
+	strcpy_s(Node->str, n, str);
+
 	Node->Next = NULL;
 
 	if (IsEmpty()) {
@@ -76,7 +75,6 @@ void CStack::Push(CItem item)
 	Count++;
 }
 
-// magbawas ng node sa ibabaw ng list
 // 
 //     +-----+
 //     |     |  First     ^
@@ -102,21 +100,51 @@ void CStack::Push(CItem item)
 //        V
 //       NULL
 //
-void CStack::Pop(CItem* item)
+void CStack::Pop(char** str)
 {
-	NODE_S* Node;
+	STACK* Node;
+	size_t n;
 
 	Node = First;
-	*item = Node->item;
+
+	n = strlen(Node->str) + 1;
+	*str = new char[n];
+	strcpy_s(*str, n, Node->str);
 
 	First = First->Next;
 	Count--;
 
+	delete[] Node->str;
 	delete Node;
 }
 
-// basahin ang nasa itaas ng stack ng walang releasing ng memory
-void CStack::Peek(CItem* item)
+void CStack::Peek(char** str)
 {
-	*item = First->item;
+	*str = First->str;
+}
+
+void CStack::Reset()
+{
+	Pointer = First;
+}
+
+bool CStack::Read(STACK** Node)
+{
+	if (Pointer == NULL) return false;
+
+	*Node = Pointer;
+
+	Pointer = Pointer->Next;
+
+	return true;
+}
+
+void CStack::Clear()
+{
+	char* str;
+
+	while (!IsEmpty()) {
+		Pop(&str);
+		delete[] str;
+	}
 }
