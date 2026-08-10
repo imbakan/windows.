@@ -45,6 +45,8 @@ int main()
     double* a;
     double value;
 
+    SetConsoleTitle(L"Polynomial");
+
     printf("\n");
     printf("Polynomials Algebra\n");
     printf("\n");
